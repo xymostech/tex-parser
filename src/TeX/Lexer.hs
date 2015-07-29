@@ -1,90 +1,125 @@
 module TeX.Lexer
-( lex
+( lexToken
+, Lexer, mkLexer
+, LexToken(Token, ControlSequence)
 )
 where
 
-import Prelude hiding (lex)
-import qualified Data.Map as M
-import qualified Data.List as L
+import Prelude ( Show, Eq
+               , Char, Bool, Int
+               , Maybe(Just, Nothing)
+               , error, otherwise, reverse, map, dropWhile
+               , (==), (<=), (>=), (-), (++), (||), (&&), ($), (*), (+), (<)
+               )
+import qualified Data.Char as C
 
-type StateName = String
-type LexInput = String
-type LexOutput = String
+import TeX.Category as Cat
 
-data Matcher = EOF
-             | Choice [Char]
-             | Anything
+data LexToken = Token Char Category
+              | ControlSequence [Char]
+  deriving (Show, Eq)
 
-data LexResultType = EOFLex | LexType String
+isHex :: Char -> Bool
+isHex c = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')
+
+hexToInt :: Char -> Int
+hexToInt c
+  | c >= '0' && c <= '9' = (C.ord c) - (C.ord '0')
+  | c >= 'a' && c <= 'f' = (C.ord c) - (C.ord 'a') + 10
+  | otherwise = error ("Can't convert '" ++ [c] ++ "' from hex")
+
+data LexerState = BeginningLine | MiddleLine | SkippingBlanks
+  deriving (Show)
+data Lexer = Lexer LexerState [[Char]]
   deriving (Show)
 
-data TransitionType = NewState StateName Bool
-                    | Fail
-                    | Finish LexResultType Bool
-
-data StateData = StateData
-    { stateMatcher :: Matcher
-    , stateTransition :: TransitionType
-    }
-
-data LexChar = EOFChar | NormalChar Char
-  deriving (Show)
-
-matches :: LexChar -> Matcher -> Bool
-matches EOFChar EOF = True
-matches _ EOF = False
-matches _ Anything = True
-matches (NormalChar c) (Choice choices) = elem c choices
-matches _ (Choice _) = False
-
-findMatcher :: LexChar -> [StateData] -> Maybe StateData
-findMatcher c =
-  L.find (\stateData -> matches c $ stateMatcher stateData)
-
-type LexTable = M.Map StateName [StateData]
-
-data Lexer = Lexer LexTable
-
-mkLexer :: [(StateName, [(Matcher, TransitionType)])] -> Lexer
-mkLexer = Lexer . M.fromList . getTableData
+mkLexer :: [[Char]] -> Lexer
+mkLexer lines =
+  Lexer BeginningLine $ map mungeLines lines
   where
-    getTableData = map (\(s, d) -> (s, map (\(m, tt) -> StateData m tt) d))
+    mungeLines :: [Char] -> [Char]
+    mungeLines line = (reverse $ dropWhile (==' ') $ reverse line) ++ ['\n']
 
-data LexResult = LexResult
-    { resultStr :: LexOutput
-    , resultType :: LexResultType
-    , resultEnd :: Int
-    }
-  deriving (Show)
-
-lexRec :: Lexer -> [LexChar] -> StateName -> LexOutput -> Int -> Either String LexResult
-lexRec lexer@(Lexer lexTable) (c:cs) state result pos = do
-  -- Find the correct state table
-  stateDatas <- case M.lookup state lexTable of
-                  Just datas -> Right datas
-                  Nothing -> Left $ "Couldn't find state \"" ++ state ++ "\""
-  -- Find the transition corresponding to the right matcher
-  transition <- case findMatcher c stateDatas of
-                  Just stateData -> Right $ stateTransition stateData
-                  Nothing -> Left $ "Couldn't find matcher to match '" ++ (show c) ++ "' in state \"" ++ state ++ "\""
-  -- Figure out what the new resulting string is, depending on what the transition says
-  newResult <- case (transition, c) of
-    (Finish _ True, EOFChar) -> Left $ "Can't include EOF char in result"
-    (Finish _ True, NormalChar char) -> return (char:result)
-    (NewState _ True, EOFChar) -> Left $ "Can't include EOF char in result"
-    (NewState _ True, NormalChar char) -> return (char:result)
-    (_, _) -> return result
-  -- Recurse or finish depending on transition
-  case transition of
-    Fail -> Left $ "Failed parsing character '" ++ (show c) ++ "' at position " ++ (show pos)
-    Finish endType include -> Right $ LexResult (reverse newResult) endType $ if include then pos else pos - 1
-    NewState newState _ -> lexRec lexer cs newState newResult (pos + 1)
-
-lexAt :: Lexer -> LexInput -> Int -> Either String LexResult
-lexAt lexer input pos =
-  lexRec lexer lexChars "start" [] pos
+lexNormalToken :: LexerState -> CategoryMap -> [Char] -> (Maybe LexToken, [Char], LexerState)
+lexNormalToken _ _ [] = error "Encountered empty list in lexNormalToken"
+lexNormalToken state catMap (x:xs) =
+  case (category, state) of
+    (EndOfLine, BeginningLine) -> (Just $ ControlSequence "par", [], state)
+    (EndOfLine, MiddleLine) -> (Just $ Token ' ' Space, [], state)
+    (EndOfLine, SkippingBlanks) -> (Nothing, [], state)
+    (Ignored, _) -> (Nothing, xs, state)
+    (Space, MiddleLine) -> (Just $ Token ' ' Space, xs, SkippingBlanks)
+    (Space, _) -> (Nothing, xs, state)
+    (Comment, _) -> (Nothing, [], state)
+    (Invalid, _) -> error $ "Invalid character: '" ++ [x] ++ "'"
+    _ -> (Just $ Token x category, xs, MiddleLine)
   where
-    lexChars = (map (\x -> NormalChar x) (L.drop pos input)) ++ [EOFChar]
+    category = Cat.lookup x catMap
 
-lex :: Lexer -> LexInput -> Either String LexResult
-lex lexer input = lexAt lexer input 0
+findAllLetters :: CategoryMap -> [Char] -> [Char] -> ([Char], [Char])
+findAllLetters _ [] result = (reverse result, [])
+findAllLetters catMap line@(x:xs) result
+  | Cat.lookup x catMap == Letter = findAllLetters catMap (replaceTrigraphs catMap xs) (x:result)
+  | otherwise = (reverse result, line)
+
+handleEscapeSequence :: LexerState -> CategoryMap -> [Char] -> (Maybe LexToken, [Char], LexerState)
+handleEscapeSequence state _ [] = (Just $ ControlSequence [], [], state)
+handleEscapeSequence _ catMap line@(x:xs)
+  | category == Letter = (Just $ ControlSequence sequence, rest, SkippingBlanks)
+  | category == Space = (Just $ ControlSequence [x], rest, SkippingBlanks)
+  | otherwise = (Just $ ControlSequence [x], xs, MiddleLine)
+  where
+    category = Cat.lookup x catMap
+    (sequence, rest) = findAllLetters catMap (replaceTrigraphs catMap line) []
+
+lexEscapeSequence :: LexerState -> CategoryMap -> [Char] -> (Maybe LexToken, [Char], LexerState)
+lexEscapeSequence _ _ [] = error "Encountered empty list in lexEscapeSequence"
+lexEscapeSequence state catMap line@(x:xs)
+  | Cat.lookup x catMap == Escape = handleEscapeSequence state catMap xs
+  | otherwise = lexNormalToken state catMap line
+
+replaceTrigraphs :: CategoryMap -> [Char] -> [Char]
+replaceTrigraphs catMap origLine@(x:y:xs)
+  | x == y &&
+    Cat.lookup x catMap == Superscript = handleHexTrigraph xs
+  | otherwise = continue
+  where
+    retry :: [Char] -> [Char]
+    retry l = replaceTrigraphs catMap l
+    continue :: [Char]
+    continue = origLine
+
+    handleHexTrigraph :: [Char] -> [Char]
+    handleHexTrigraph line@(z:w:zs)
+      | isHex z && isHex w =
+        retry $ (C.chr $ (hexToInt z * 16) + (hexToInt w)):zs
+      | otherwise = handleSingleCharTrigraph line
+    handleHexTrigraph line = handleSingleCharTrigraph line
+
+    handleSingleCharTrigraph :: [Char] -> [Char]
+    handleSingleCharTrigraph (z:zs)
+      | c < 64 = retry $ (C.chr $ c + 64):zs
+      | c < 128 = retry $ (C.chr $ c - 64):zs
+      | otherwise = continue
+      where
+        c = C.ord z
+    handleSingleCharTrigraph _ = continue
+replaceTrigraphs _ line = line
+
+startLexToken :: LexerState -> CategoryMap -> [Char] -> (Maybe LexToken, [Char], LexerState)
+startLexToken state catMap line =
+  lexEscapeSequence state catMap $ replaceTrigraphs catMap line
+
+handleLines :: Lexer -> CategoryMap -> Maybe (LexToken, Lexer)
+handleLines (Lexer _ []) _ = Nothing
+handleLines (Lexer _ ([]:lines)) catMap =
+  handleLines (Lexer BeginningLine lines) catMap
+handleLines (Lexer state (line:lines)) catMap =
+  case maybeToken of
+    Just token -> Just (token, Lexer newState (newLine:lines))
+    Nothing -> handleLines (Lexer newState (newLine:lines)) catMap
+  where
+    (maybeToken, newLine, newState) = startLexToken state catMap line
+
+lexToken :: Lexer -> CategoryMap -> Maybe (LexToken, Lexer)
+lexToken = handleLines
