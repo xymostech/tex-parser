@@ -1,11 +1,10 @@
 module TeX.Lexer
 ( lexToken
 , Lexer, mkLexer
-, LexToken(Token, ControlSequence)
 )
 where
 
-import Prelude ( Show, Eq
+import Prelude ( Show
                , Char, Bool, Int
                , Maybe(Just, Nothing)
                , error, otherwise, reverse, map, dropWhile
@@ -14,10 +13,7 @@ import Prelude ( Show, Eq
 import qualified Data.Char as C
 
 import TeX.Category as Cat
-
-data LexToken = Token Char Category
-              | ControlSequence [Char]
-  deriving (Show, Eq)
+import TeX.Token
 
 isHex :: Char -> Bool
 isHex c = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')
@@ -40,19 +36,19 @@ mkLexer lines =
     mungeLines :: [Char] -> [Char]
     mungeLines line = (reverse $ dropWhile (==' ') $ reverse line) ++ ['\n']
 
-lexNormalToken :: LexerState -> CategoryMap -> [Char] -> (Maybe LexToken, [Char], LexerState)
+lexNormalToken :: LexerState -> CategoryMap -> [Char] -> (Maybe Token, [Char], LexerState)
 lexNormalToken _ _ [] = error "Encountered empty list in lexNormalToken"
 lexNormalToken state catMap (x:xs) =
   case (category, state) of
     (EndOfLine, BeginningLine) -> (Just $ ControlSequence "par", [], state)
-    (EndOfLine, MiddleLine) -> (Just $ Token ' ' Space, [], state)
+    (EndOfLine, MiddleLine) -> (Just $ CharToken ' ' Space, [], state)
     (EndOfLine, SkippingBlanks) -> (Nothing, [], state)
     (Ignored, _) -> (Nothing, xs, state)
-    (Space, MiddleLine) -> (Just $ Token ' ' Space, xs, SkippingBlanks)
+    (Space, MiddleLine) -> (Just $ CharToken ' ' Space, xs, SkippingBlanks)
     (Space, _) -> (Nothing, xs, state)
     (Comment, _) -> (Nothing, [], state)
     (Invalid, _) -> error $ "Invalid character: '" ++ [x] ++ "'"
-    _ -> (Just $ Token x category, xs, MiddleLine)
+    _ -> (Just $ CharToken x category, xs, MiddleLine)
   where
     category = Cat.lookup x catMap
 
@@ -62,7 +58,7 @@ findAllLetters catMap line@(x:xs) result
   | Cat.lookup x catMap == Letter = findAllLetters catMap (replaceTrigraphs catMap xs) (x:result)
   | otherwise = (reverse result, line)
 
-handleEscapeSequence :: LexerState -> CategoryMap -> [Char] -> (Maybe LexToken, [Char], LexerState)
+handleEscapeSequence :: LexerState -> CategoryMap -> [Char] -> (Maybe Token, [Char], LexerState)
 handleEscapeSequence state _ [] = (Just $ ControlSequence [], [], state)
 handleEscapeSequence _ catMap line@(x:xs)
   | category == Letter = (Just $ ControlSequence sequence, rest, SkippingBlanks)
@@ -72,7 +68,7 @@ handleEscapeSequence _ catMap line@(x:xs)
     category = Cat.lookup x catMap
     (sequence, rest) = findAllLetters catMap (replaceTrigraphs catMap line) []
 
-lexEscapeSequence :: LexerState -> CategoryMap -> [Char] -> (Maybe LexToken, [Char], LexerState)
+lexEscapeSequence :: LexerState -> CategoryMap -> [Char] -> (Maybe Token, [Char], LexerState)
 lexEscapeSequence _ _ [] = error "Encountered empty list in lexEscapeSequence"
 lexEscapeSequence state catMap line@(x:xs)
   | Cat.lookup x catMap == Escape = handleEscapeSequence state catMap xs
@@ -106,11 +102,11 @@ replaceTrigraphs catMap origLine@(x:y:xs)
     handleSingleCharTrigraph _ = continue
 replaceTrigraphs _ line = line
 
-startLexToken :: LexerState -> CategoryMap -> [Char] -> (Maybe LexToken, [Char], LexerState)
+startLexToken :: LexerState -> CategoryMap -> [Char] -> (Maybe Token, [Char], LexerState)
 startLexToken state catMap line =
   lexEscapeSequence state catMap $ replaceTrigraphs catMap line
 
-handleLines :: Lexer -> CategoryMap -> Maybe (LexToken, Lexer)
+handleLines :: Lexer -> CategoryMap -> Maybe (Token, Lexer)
 handleLines (Lexer _ []) _ = Nothing
 handleLines (Lexer _ ([]:lines)) catMap =
   handleLines (Lexer BeginningLine lines) catMap
@@ -121,5 +117,5 @@ handleLines (Lexer state (line:lines)) catMap =
   where
     (maybeToken, newLine, newState) = startLexToken state catMap line
 
-lexToken :: Lexer -> CategoryMap -> Maybe (LexToken, Lexer)
+lexToken :: Lexer -> CategoryMap -> Maybe (Token, Lexer)
 lexToken = handleLines
