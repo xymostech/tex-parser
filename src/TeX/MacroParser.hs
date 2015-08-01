@@ -1,10 +1,11 @@
 module TeX.MacroParser where
 
-import Text.Parsec
+import Text.Parsec ( try, option, choice, lookAhead, anyToken
+                   , (<|>), (<?>)
+                   )
 import Data.Char (ord)
-import Data.List (takeWhile)
 import qualified Data.Map as M
-import Control.Monad.State
+import Control.Monad.State (lift, modify, gets)
 
 import TeX.Parser
 import TeX.Token
@@ -46,10 +47,10 @@ parseParameterText :: Int -> TeXParser [ParameterToken]
 parseParameterText num = do
   token <- parseParameterToken
   nextNum <- case token of
-    p@(PTParameter n) -> if n == num
+    PTParameter n -> if n == num
                          then return (num + 1)
                          else fail "macro parameters in wrong order"
-    t -> return num
+    _ -> return num
   rest <- option [] $ parseParameterText nextNum
   return $ (token:rest)
 
@@ -90,7 +91,7 @@ makeReplacementText ((CharToken _ Parameter):t@(CharToken _ Parameter):rest) =
 makeReplacementText ((CharToken _ Parameter):(CharToken n Other):rest)
   | n >= '0' && n <= '9' = (:) (RTParameter $ toInt n) <$> makeReplacementText rest
   | otherwise = fail "invalid replacement token"
-makeReplacementText ((CharToken _ Parameter):_:rest) =
+makeReplacementText ((CharToken _ Parameter):_) =
   fail "invalid replacement token"
 makeReplacementText (t:rest) =
   (:) (RTToken t) <$> makeReplacementText rest
@@ -113,7 +114,7 @@ parseParams ((PTToken token):ps) = do
   if token == token'
   then parseParams ps
   else fail $ "mismatched token: " ++ (show token)
-parseParams ((PTParameter num):ps) = do
+parseParams ((PTParameter _):ps) = do
   tokens <- case ps of
     [] -> undelimitedParameter
     ((PTParameter _):_) -> undelimitedParameter

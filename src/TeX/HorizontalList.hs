@@ -1,11 +1,9 @@
 module TeX.HorizontalList where
 
-import Prelude ( Char, Int, Show, String
-               , error, return
-               , ($), (<$>), (>>=), (.), (>>), (<*)
+import Prelude ( Char, Int, Show
+               , (<$>), (>>), (<*)
                )
 import Text.Parsec
-import Debug.Trace
 
 import TeX.Parser
 import TeX.Category

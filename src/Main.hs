@@ -1,8 +1,9 @@
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module Main where
 
 import Prelude (Maybe(Just, Nothing), IO, Char, Either, return, ($))
-import Data.Map as M
-import Data.List as L
+import qualified Data.Map as M
+import qualified Data.List as L
 import Text.Parsec
 import Control.Monad.State as S
 
@@ -17,7 +18,7 @@ import TeX.Token
 lexAll :: Lexer -> CategoryMap -> [Token]
 lexAll lexer map =
   case lexToken lexer map of
-    Just (token, newLexer) -> token:(lexAll newLexer map)
+    Just (tok, newLexer) -> tok:(lexAll newLexer map)
     Nothing -> []
 
 defaultMap :: CategoryMap
@@ -32,7 +33,7 @@ tryParser parser str =
     --testParse :: (S.State TeXState) (Either ParseError a)
     testParse =
       runParserT parser
-                   (TeXParserState 2)
+                   ()
                    "main.tex"
                    (TeXLexerStream (mkLexer lines) [])
 

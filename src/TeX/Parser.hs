@@ -3,13 +3,13 @@
              MultiParamTypeClasses #-}
 module TeX.Parser where
 
-import Prelude ( Maybe(Just, Nothing), Int, Show
+import Prelude ( Maybe(Just, Nothing), Show
                , show, otherwise
-               , ($), (==), (<*), (*>), (++)
+               , ($), (==), (<*), (++)
                )
 import Control.Monad.State as S
 import Text.Parsec ( ParsecT, Stream(uncons)
-                   , tokenPrim, try, anyToken, lookAhead
+                   , tokenPrim, try
                    , getInput, setInput
                    , (<|>))
 import Debug.Trace
@@ -36,18 +36,16 @@ data TeXLexerStream = TeXLexerStream Lexer [Token]
 
 instance Stream TeXLexerStream (S.State TeXState) Token where
   -- uncons :: TeXLexerStream -> S.State TeXState (Maybe (Token, TeXLexerStream))
-  uncons st@(TeXLexerStream lexer []) = do
+  uncons (TeXLexerStream lexer []) = do
     catMap <- gets categoryMap
     return $ case lexToken lexer catMap of
                Just (lexedToken, newLexer) ->
                  Just (lexedToken, TeXLexerStream newLexer [])
                Nothing -> Nothing
-  uncons st@(TeXLexerStream lexer (tok:toks)) = do
+  uncons (TeXLexerStream lexer (tok:toks)) = do
     return $ Just (tok, TeXLexerStream lexer toks)
 
-data TeXParserState = TeXParserState Int
-
-type TeXParser = ParsecT TeXLexerStream TeXParserState (S.State TeXState)
+type TeXParser = ParsecT TeXLexerStream () (S.State TeXState)
 
 prependTokens :: [Token] -> TeXParser ()
 prependTokens newToks = do

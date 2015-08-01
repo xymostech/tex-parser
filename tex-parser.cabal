@@ -31,6 +31,8 @@ executable tex-parser-tests
   build-depends:       base >=4.8 && <4.9
                      , transformers >=0.4 && <0.5
                      , containers >=0.5 && <0.6
+                     , mtl >=2.2 && <2.3
+                     , parsec >= 3.1 && < 3.2
                      , HUnit >= 1.2
   hs-source-dirs:      src
   default-language:    Haskell2010
