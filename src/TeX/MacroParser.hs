@@ -54,18 +54,16 @@ parseParameterText num = do
   rest <- option [] $ parseParameterText nextNum
   return $ (token:rest)
 
-parseBalancedText :: Int -> TeXParser [Token]
-parseBalancedText level = do
+parseBalancedTextRec :: Int -> TeXParser [Token]
+parseBalancedTextRec level = do
   (token, newLevel) <-
     openBrace <|>
     closeBrace <|>
     ((,) <$> (categoryToken Parameter) <*> (return level)) <|>
-    --try ((,) <$> (numberedParameter) <*> (return level)) <|>
-    --try doubleHash <|>
     ((,) <$> (controlSequence) <*> (return level)) <|>
     ((,) <$> (allowedTokens) <*> (return level)) <?>
     "balanced text token"
-  rest <- option [] $ (levelZero newLevel) <|> parseBalancedText newLevel
+  rest <- option [] $ (levelZero newLevel) <|> parseBalancedTextRec newLevel
   return $ (token:rest)
   where
     openBrace = do
@@ -74,15 +72,14 @@ parseBalancedText level = do
     closeBrace = do
       tok <- categoryToken EndGroup
       return (tok, level - 1)
-    {-
-    doubleHash = do
-      _ <- categoryToken Parameter
-      t <- categoryToken Parameter
-      return (RTToken t, level)
-    -}
     levelZero l
       | l == 0 = lookAhead $ categoryToken EndGroup >> return []
       | otherwise = fail "not at level 0"
+
+parseBalancedText :: TeXParser [Token]
+parseBalancedText = do
+  (lookAhead (categoryToken EndGroup) >> return []) <|>
+   parseBalancedTextRec 0
 
 -- TODO(emily): make this error if there's a parameter greater than the number allowed
 makeReplacementText :: [Token] -> TeXParser [ReplacementToken]
@@ -103,7 +100,7 @@ parseDef = do
   control <- controlSequence
   parameterText <- option [] $ try (parseParameterText 1)
   _ <- categoryToken BeginGroup
-  replacementText <- option [] $ try (parseBalancedText 0 >>= makeReplacementText)
+  replacementText <- try (parseBalancedText >>= makeReplacementText)
   _ <- categoryToken EndGroup
   return $ Def (extractControlSequence control) parameterText replacementText
 
@@ -125,7 +122,7 @@ parseParams ((PTParameter _):ps) = do
     undelimitedParameter = do
       (try $ do
         _ <- categoryToken BeginGroup
-        text <- option [] $ try (parseBalancedText 0)
+        text <- try parseBalancedText
         _ <- categoryToken EndGroup
         return text) <|>
        (categoryToken Space >> undelimitedParameter) <|>
@@ -147,7 +144,7 @@ parseParams ((PTParameter _):ps) = do
       (lookAhead (try (tryMatch ps)) >> return currToks) <|>
        (try $ do
           left <- categoryToken BeginGroup
-          text <- option [] $ try (parseBalancedText 0)
+          text <- try parseBalancedText
           right <- categoryToken EndGroup
           case currToks of
             [] -> (lookAhead (try (tryMatch ps)) >> return text) <|>

@@ -1,7 +1,11 @@
-module TeX.HorizontalList where
+module TeX.HorizontalList
+( HorizontalListElem(HBoxChar, HPenalty)
+, horizontalList
+)
+where
 
-import Prelude ( Char, Int, Show
-               , (<$>), (>>), (<*)
+import Prelude ( Char, Int, Show, Eq
+               , (<$>), (>>), (<*>), ($)
                )
 import Text.Parsec
 
@@ -13,18 +17,16 @@ import TeX.MacroParser
 data HorizontalListElem
   = HBoxChar Char
   | HPenalty Int
-  deriving (Show)
+  deriving (Eq, Show)
 
-type HorizontalList = [HorizontalListElem]
-
-parseHorizontalListElem :: TeXParser HorizontalListElem
-parseHorizontalListElem =
+horizontalListElem :: TeXParser HorizontalListElem
+horizontalListElem =
   HBoxChar <$> (extractChar <$> (categoryToken Letter)) <|>
   HBoxChar <$> (extractChar <$> (categoryToken Other)) <|>
-  HBoxChar <$> (extractChar <$> (categoryToken Space)) <|>
-  (parseMacros >> parseHorizontalListElem)
+  HBoxChar <$> (extractChar <$> (categoryToken Space))
   <?> "horizontal list elem"
 
-parseHorizontalList :: TeXParser HorizontalList
-parseHorizontalList =
-  (many parseHorizontalListElem) <* eof
+horizontalList :: TeXParser [HorizontalListElem]
+horizontalList = do
+  option [] $ ((:) <$> horizontalListElem <*> horizontalList) <|>
+              (parseMacros >> horizontalList)

@@ -1,17 +1,20 @@
 module Main where
 
-import Prelude (Char, Maybe(Just, Nothing), IO, Either(Left, Right)
+import Prelude (Char, Maybe(Just, Nothing), IO, Either(Left, Right), Eq, Show
                , return, fst
-               , ($)
+               , ($), (<*)
                )
-import Text.Parsec (ParseError, runParserT)
+import Text.Parsec (ParseError, runParserT, eof)
 import Control.Monad.State (runState)
 import Test.HUnit
 
-import TeX.Parser
 import TeX.Category
-import TeX.Token
+import TeX.Def
+import TeX.HorizontalList
 import TeX.Lexer
+import TeX.MacroParser
+import TeX.Parser
+import TeX.Token
 
 myLexerMap :: CategoryMap
 myLexerMap = set '^' Superscript initialMap
@@ -49,7 +52,7 @@ lexerTests =
   , "ignored spaces" ~: assertLexesTo [" a  ", " a%"] [CharToken 'a' Letter, CharToken ' ' Space, CharToken 'a' Letter]
   ]
 
-myParserMap = set '#' Parameter initialMap
+myParserMap = set '#' Parameter $ set '{' BeginGroup $ set '}' EndGroup $ initialMap
 
 doParse :: TeXParser a -> [[Char]] -> Either ParseError a
 doParse parser lines =
@@ -61,7 +64,30 @@ doParse parser lines =
                    "main.tex"
                    (TeXLexerStream (mkLexer lines) [])
 
+assertParsesTo :: (Eq a, Show a) => TeXParser a -> [[Char]] -> a -> Assertion
+assertParsesTo p lines expected =
+  assertEqual "" (Right expected) (doParse (p <* eof) lines)
+
+assertExpandsTo :: Def -> [[Char]] -> [Token] -> Assertion
+assertExpandsTo def lines expected =
+  assertEqual "" (Right expected) (doParse (parseExpansion def <* eof) lines)
+
+macroTests =
+  test
+  [ "parses empty macros" ~: assertParsesTo parseDef ["\\def\\a{}%"] (Def "a" [] [])
+  , "parses basic macros" ~: assertParsesTo parseDef ["\\def\\a{b}%"] (Def "a" [] [RTToken (CharToken 'b' Letter)])
+  ]
+
+parserTests =
+  test
+  [ "basic objects" ~: assertParsesTo horizontalList ["a+%"] [HBoxChar 'a', HBoxChar '+']
+  -- TODO(emily): this should actually be a glue
+  , "spaces" ~: assertParsesTo horizontalList ["a %"] [HBoxChar 'a', HBoxChar ' ']
+  ]
+
 main :: IO ()
 main = do
-  _ <- runTestTT lexerTests
+  _ <- runTestTT $ "lexer" ~: lexerTests
+  _ <- runTestTT $ "macros" ~: macroTests
+  _ <- runTestTT $ "parser" ~: parserTests
   return ()
