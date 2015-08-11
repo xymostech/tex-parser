@@ -19,6 +19,7 @@ import TeX.Lexer
 import TeX.MacroParser
 import TeX.Parser
 import TeX.Token
+import TeX.State
 
 myLexerMap :: CategoryMap
 myLexerMap = set '^' Superscript initialMap

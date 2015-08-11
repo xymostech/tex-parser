@@ -17,19 +17,10 @@ import Debug.Trace
 import TeX.Lexer
 import TeX.Category
 import TeX.Token
-import TeX.Def
+import TeX.State
 
 myTrace :: (Show a, Show b) => b -> a -> a
 myTrace str a = traceShow (str, a) a
-
-data TeXState = TeXState
-  { stateCategoryMap :: CategoryMap
-  , stateDefinitionMap :: DefinitionMap
-  }
-  deriving (Show)
-
-mkState :: CategoryMap -> TeXState
-mkState catMap = TeXState catMap emptyDefMap
 
 data TeXLexerStream = TeXLexerStream
   { streamLexer :: Lexer
@@ -38,12 +29,12 @@ data TeXLexerStream = TeXLexerStream
   }
   deriving (Show)
 
-mkStream :: CategoryMap -> [[Char]] -> TeXLexerStream
-mkStream map lines =
+mkStream :: TeXState -> [[Char]] -> TeXLexerStream
+mkStream state lines =
   TeXLexerStream
   { streamLexer = mkLexer lines
   , streamNextTokens = []
-  , streamCategoryMap = map
+  , streamCategoryMap = stateCategoryMap state
   }
 
 instance Stream TeXLexerStream Identity Token where
@@ -104,7 +95,7 @@ runParser parser maybeState lines =
   runIdentity toParse
   where
     toParse =
-      runParserT parser state "main.tex" (mkStream (stateCategoryMap state) lines)
+      runParserT parser state "main.tex" (mkStream state lines)
 
     state = case maybeState of
               Just s -> s

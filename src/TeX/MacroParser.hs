@@ -4,12 +4,12 @@ import Text.Parsec ( try, option, choice, lookAhead, anyToken, modifyState, getS
                    , (<|>), (<?>)
                    )
 import Data.Char (ord)
-import qualified Data.Map as M
 
 import TeX.Parser
 import TeX.Token
 import TeX.Category
 import TeX.Def
+import TeX.State
 
 toInt :: Char -> Int
 toInt c = (ord c) - (ord '0')
@@ -179,10 +179,10 @@ parseMacros = do
   tok <- lookAhead controlSequence
   case extractControlSequence tok of
     "def" -> do
-      def@(Def name _ _) <- parseDef
-      modifyState (\st -> st { stateDefinitionMap = M.insert name def $ stateDefinitionMap st })
+      def <- parseDef
+      modifyState (setDefinition def)
     name -> do
-      defMap <- stateDefinitionMap <$> getState
-      case M.lookup name defMap of
+      maybeDef <- getDefinition name <$> getState
+      case maybeDef of
         Just def -> runExpansion def
         Nothing -> fail "unknown macro"

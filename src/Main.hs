@@ -14,6 +14,7 @@ import TeX.HorizontalList
 import TeX.Def
 import TeX.MacroParser
 import TeX.Token
+import TeX.State
 
 lexAll :: Lexer -> CategoryMap -> [Token]
 lexAll lexer map =
