@@ -181,10 +181,10 @@ parseMacros = do
   case extractControlSequence tok of
     "def" -> do
       def@(Def name _ _) <- parseDef
-      lift $ modify (\st -> st { definitionMap = M.insert name def $ definitionMap st })
+      lift $ modify (\st -> st { stateDefinitionMap = M.insert name def $ stateDefinitionMap st })
       return ()
     name -> do
-      defMap <- lift $ gets definitionMap
+      defMap <- lift $ gets stateDefinitionMap
       case M.lookup name defMap of
         Just def -> runExpansion def
         Nothing -> fail "unknown macro"

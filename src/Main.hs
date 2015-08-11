@@ -24,18 +24,11 @@ lexAll lexer map =
 defaultMap :: CategoryMap
 defaultMap = set '{' BeginGroup $ set '}' EndGroup $ set '#' Parameter $ set '^' Superscript initialMap
 
-tryParser :: TeXParser a -> [Char] -> (Either ParseError a, TeXState)
+tryParser :: TeXParser a -> [Char] -> Either ParseError a
 tryParser parser str =
-  runState testParse $ mkState defaultMap
+  TeX.Parser.runParser parser (Just $ mkState defaultMap) lines
   where
     lines = [str]
-
-    --testParse :: (S.State TeXState) (Either ParseError a)
-    testParse =
-      runParserT parser
-                   ()
-                   "main.tex"
-                   (TeXLexerStream (mkLexer lines) [])
 
 main :: IO ()
 main =

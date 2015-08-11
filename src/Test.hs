@@ -1,9 +1,8 @@
 module Main where
 
-import Control.Monad.State (runState)
 import Data.Either (Either(Right), isLeft)
 import Prelude (Char, Maybe(Just, Nothing), IO, Eq, Show, String, Bool
-               , return, fst, putStrLn, sequence, all, id
+               , return, putStrLn, sequence, all, id
                , ($), (<*), (+), (==)
                )
 import System.Exit (exitSuccess, exitFailure)
@@ -11,7 +10,7 @@ import Test.HUnit ( Assertion, Test
                   , assertEqual, assertBool, test, runTestTT, failures, errors
                   , (~:)
                   )
-import Text.Parsec (ParseError, runParserT, eof)
+import Text.Parsec (ParseError, eof)
 
 import TeX.Category
 import TeX.Def
@@ -62,13 +61,7 @@ myParserMap = set '#' Parameter $ set '{' BeginGroup $ set '}' EndGroup $ initia
 
 doParse :: TeXParser a -> [[Char]] -> Either ParseError a
 doParse parser lines =
-  fst $ runState testParse $ mkState myParserMap
-  where
-    testParse =
-      runParserT parser
-                   ()
-                   "main.tex"
-                   (TeXLexerStream (mkLexer lines) [])
+  runParser parser (Just $ mkState myParserMap) lines
 
 assertDoesntParse :: TeXParser a -> [[Char]] -> Assertion
 assertDoesntParse p lines =

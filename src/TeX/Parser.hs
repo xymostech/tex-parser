@@ -3,13 +3,13 @@
              MultiParamTypeClasses #-}
 module TeX.Parser where
 
-import Prelude ( Maybe(Just, Nothing), Show
-               , show, otherwise
+import Prelude ( Maybe(Just, Nothing), Show, Char, Either()
+               , show, otherwise, fst, return, fail
                , ($), (==), (<*), (++)
                )
-import Control.Monad.State as S
-import Text.Parsec ( ParsecT, Stream(uncons)
-                   , tokenPrim, try
+import qualified Control.Monad.State as S
+import Text.Parsec ( ParsecT, Stream(uncons), ParseError
+                   , tokenPrim, try, runParserT
                    , getInput, setInput
                    , (<|>))
 import Debug.Trace
@@ -23,45 +23,57 @@ myTrace :: (Show a, Show b) => b -> a -> a
 myTrace str a = traceShow (str, a) a
 
 data TeXState = TeXState
-  { categoryMap :: CategoryMap
-  , definitionMap :: DefinitionMap
+  { stateCategoryMap :: CategoryMap
+  , stateDefinitionMap :: DefinitionMap
   }
   deriving (Show)
 
 mkState :: CategoryMap -> TeXState
 mkState catMap = TeXState catMap emptyDefMap
 
-data TeXLexerStream = TeXLexerStream Lexer [Token]
+data TeXLexerStream = TeXLexerStream
+  { streamLexer :: Lexer
+  , streamNextTokens :: [Token]
+  , streamCategoryMap :: CategoryMap
+  }
   deriving (Show)
+
+mkStream :: CategoryMap -> [[Char]] -> TeXLexerStream
+mkStream map lines =
+  TeXLexerStream
+  { streamLexer = mkLexer lines
+  , streamNextTokens = []
+  , streamCategoryMap = map
+  }
 
 instance Stream TeXLexerStream (S.State TeXState) Token where
   -- uncons :: TeXLexerStream -> S.State TeXState (Maybe (Token, TeXLexerStream))
-  uncons (TeXLexerStream lexer []) = do
-    catMap <- gets categoryMap
+  uncons (TeXLexerStream lexer [] _) = do
+    catMap <- S.gets stateCategoryMap
     return $ case lexToken lexer catMap of
                Just (lexedToken, newLexer) ->
-                 Just (lexedToken, TeXLexerStream newLexer [])
+                 Just (lexedToken, TeXLexerStream newLexer [] catMap)
                Nothing -> Nothing
-  uncons (TeXLexerStream lexer (tok:toks)) = do
-    return $ Just (tok, TeXLexerStream lexer toks)
+  uncons (TeXLexerStream lexer (tok:toks) catMap) = do
+    return $ Just (tok, TeXLexerStream lexer toks catMap)
 
 type TeXParser = ParsecT TeXLexerStream () (S.State TeXState)
 
 prependTokens :: [Token] -> TeXParser ()
 prependTokens newToks = do
-  (TeXLexerStream lexer toks) <- getInput
-  setInput $ (TeXLexerStream lexer (newToks ++ toks))
+  (TeXLexerStream lexer toks catMap) <- getInput
+  setInput $ (TeXLexerStream lexer (newToks ++ toks) catMap)
 
 runGrouped :: TeXParser a -> TeXParser a
 runGrouped p = do
-  oldState <- lift $ get
-  statefulTry (p <* put oldState)
+  oldState <- S.lift $ S.get
+  statefulTry (p <* S.put oldState)
 
 statefulTry :: TeXParser a -> TeXParser a
 statefulTry p = do
-  oldState <- lift $ get
+  oldState <- S.lift $ S.get
   try p <|> do
-    lift $ put oldState
+    S.lift $ S.put oldState
     fail "restoring state"
 
 tokenWithFunc :: (Token -> Maybe Token) -> TeXParser Token
@@ -94,3 +106,15 @@ categoryToken cat =
       | cat == cat' = Just tok
       | otherwise = Nothing
     testToken _ = Nothing
+
+runParser :: TeXParser a -> Maybe TeXState -> [[Char]] -> Either ParseError a
+runParser parser maybeState lines =
+  fst $ S.runState toParse state
+  where
+    -- toParse :: (S.State TeXState) (Either ParseError a)
+    toParse =
+      runParserT parser () "main.tex" (mkStream (stateCategoryMap state) lines)
+
+    state = case maybeState of
+              Just s -> s
+              Nothing -> mkState initialMap
