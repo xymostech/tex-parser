@@ -153,9 +153,7 @@ parseParams ((PTParameter _):ps) = do
        ) <|>
        (do
          newTok <- anyToken
-         case (currToks, newTok) of
-           ([], CharToken _ Space) -> tryDelimiter currToks
-           _ -> tryDelimiter (currToks ++ [newTok]))
+         tryDelimiter (currToks ++ [newTok]))
 
     delimitedParameter = tryDelimiter []
 parseParams (PTTrailingBrace:_) = fail "unimplemented pttrailingbrace"
