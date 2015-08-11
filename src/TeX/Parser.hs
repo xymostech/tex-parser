@@ -4,14 +4,14 @@
 module TeX.Parser where
 
 import Prelude ( Maybe(Just, Nothing), Show, Char, Either()
-               , show, otherwise, fst, return, fail
+               , show, otherwise, return
                , ($), (==), (<*), (++)
                )
-import qualified Control.Monad.State as S
+import Control.Monad.Identity (Identity, runIdentity)
 import Text.Parsec ( ParsecT, Stream(uncons), ParseError
-                   , tokenPrim, try, runParserT
-                   , getInput, setInput
-                   , (<|>))
+                   , tokenPrim, runParserT
+                   , getInput, setInput, getState, putState
+                   )
 import Debug.Trace
 
 import TeX.Lexer
@@ -46,10 +46,9 @@ mkStream map lines =
   , streamCategoryMap = map
   }
 
-instance Stream TeXLexerStream (S.State TeXState) Token where
+instance Stream TeXLexerStream Identity Token where
   -- uncons :: TeXLexerStream -> S.State TeXState (Maybe (Token, TeXLexerStream))
-  uncons (TeXLexerStream lexer [] _) = do
-    catMap <- S.gets stateCategoryMap
+  uncons (TeXLexerStream lexer [] catMap) = do
     return $ case lexToken lexer catMap of
                Just (lexedToken, newLexer) ->
                  Just (lexedToken, TeXLexerStream newLexer [] catMap)
@@ -57,7 +56,7 @@ instance Stream TeXLexerStream (S.State TeXState) Token where
   uncons (TeXLexerStream lexer (tok:toks) catMap) = do
     return $ Just (tok, TeXLexerStream lexer toks catMap)
 
-type TeXParser = ParsecT TeXLexerStream () (S.State TeXState)
+type TeXParser = ParsecT TeXLexerStream TeXState Identity
 
 prependTokens :: [Token] -> TeXParser ()
 prependTokens newToks = do
@@ -66,15 +65,8 @@ prependTokens newToks = do
 
 runGrouped :: TeXParser a -> TeXParser a
 runGrouped p = do
-  oldState <- S.lift $ S.get
-  statefulTry (p <* S.put oldState)
-
-statefulTry :: TeXParser a -> TeXParser a
-statefulTry p = do
-  oldState <- S.lift $ S.get
-  try p <|> do
-    S.lift $ S.put oldState
-    fail "restoring state"
+  oldState <- getState
+  p <* (putState oldState)
 
 tokenWithFunc :: (Token -> Maybe Token) -> TeXParser Token
 tokenWithFunc func =
@@ -109,11 +101,10 @@ categoryToken cat =
 
 runParser :: TeXParser a -> Maybe TeXState -> [[Char]] -> Either ParseError a
 runParser parser maybeState lines =
-  fst $ S.runState toParse state
+  runIdentity toParse
   where
-    -- toParse :: (S.State TeXState) (Either ParseError a)
     toParse =
-      runParserT parser () "main.tex" (mkStream (stateCategoryMap state) lines)
+      runParserT parser state "main.tex" (mkStream (stateCategoryMap state) lines)
 
     state = case maybeState of
               Just s -> s

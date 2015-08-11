@@ -1,11 +1,10 @@
 module TeX.MacroParser where
 
-import Text.Parsec ( try, option, choice, lookAhead, anyToken
+import Text.Parsec ( try, option, choice, lookAhead, anyToken, modifyState, getState
                    , (<|>), (<?>)
                    )
 import Data.Char (ord)
 import qualified Data.Map as M
-import Control.Monad.State (lift, modify, gets)
 
 import TeX.Parser
 import TeX.Token
@@ -181,10 +180,9 @@ parseMacros = do
   case extractControlSequence tok of
     "def" -> do
       def@(Def name _ _) <- parseDef
-      lift $ modify (\st -> st { stateDefinitionMap = M.insert name def $ stateDefinitionMap st })
-      return ()
+      modifyState (\st -> st { stateDefinitionMap = M.insert name def $ stateDefinitionMap st })
     name -> do
-      defMap <- lift $ gets stateDefinitionMap
+      defMap <- stateDefinitionMap <$> getState
       case M.lookup name defMap of
         Just def -> runExpansion def
         Nothing -> fail "unknown macro"

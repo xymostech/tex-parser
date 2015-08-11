@@ -151,6 +151,7 @@ parserTests =
   [ "basic objects" ~: assertParsesTo horizontalList ["a+%"] [HBoxChar 'a', HBoxChar '+']
   -- TODO(emily): this should actually be a glue
   , "spaces" ~: assertParsesTo horizontalList ["a %"] [HBoxChar 'a', HBoxChar ' ']
+  , "stores and expands macros" ~: assertParsesTo horizontalList ["\\def\\a#1{#1#1}\\a{b}%"] [HBoxChar 'b', HBoxChar 'b']
   ]
 
 doTest :: String -> Test -> IO Bool
