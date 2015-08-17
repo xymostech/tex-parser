@@ -10,17 +10,19 @@ module TeX.Category
           )
 , fromCategory, toCategory
 , CategoryMap()
-, empty, lookup, set
+, empty, category
 , initialMap
 )
 where
 
-import Prelude ( Show, Enum, Eq
+import Prelude ( Show, Enum, Eq, Functor
                , Int, Char
                , toEnum, fromEnum
-               , Maybe(Just, Nothing)
-               , ($), (==), (++))
+               , Maybe()
+               , ($), (++))
 import qualified Data.Map as M
+
+import TeX.StateUtils
 
 data Category = Escape
               | BeginGroup
@@ -46,23 +48,16 @@ fromCategory = fromEnum
 toCategory :: Int -> Category
 toCategory = toEnum
 
-data CategoryMap = CategoryMap (M.Map Char Category)
+newtype CategoryMap = CategoryMap (M.Map Char Category)
   deriving (Show)
 
-lookup :: Char -> CategoryMap -> Category
-lookup c (CategoryMap map) =
-  case M.lookup c map of
-    Just cat -> cat
-    Nothing -> Other
+--category :: Char -> Lens' CategoryMap (Maybe Category)
+category :: Functor f => Char -> (Maybe Category -> f (Maybe Category)) ->
+            CategoryMap -> f CategoryMap
+category = makeLens (\(CategoryMap x) -> x) CategoryMap
 
 empty :: CategoryMap
 empty = CategoryMap M.empty
-
-set :: Char -> Category -> CategoryMap -> CategoryMap
-set c cat (CategoryMap map) =
-  CategoryMap $ if cat == Other
-                then M.delete c map
-                else M.insert c cat map
 
 initialMap :: CategoryMap
 initialMap =

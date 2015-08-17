@@ -1,8 +1,15 @@
-module TeX.Def where
+module TeX.Def
+( ParameterToken(PTToken, PTParameter, PTTrailingBrace)
+, ReplacementToken(RTToken, RTParameter)
+, Def(Def)
+, DefinitionMap(), emptyDefMap, definition
+)
+where
 
 import qualified Data.Map as M
 
 import TeX.Token
+import TeX.StateUtils
 
 data ParameterToken
   = PTToken Token
@@ -18,7 +25,11 @@ data ReplacementToken
 data Def = Def String [ParameterToken] [ReplacementToken]
   deriving (Eq, Show)
 
-type DefinitionMap = M.Map String Def
+newtype DefinitionMap = DefinitionMap (M.Map String Def)
+  deriving (Show)
 
 emptyDefMap :: DefinitionMap
-emptyDefMap = M.empty
+emptyDefMap = DefinitionMap $ M.empty
+
+definition :: Functor f => String -> (Maybe Def -> f (Maybe Def)) -> DefinitionMap -> f (DefinitionMap)
+definition = makeLens (\(DefinitionMap x) -> x) DefinitionMap

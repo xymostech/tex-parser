@@ -5,6 +5,7 @@ import Prelude (Maybe(Just, Nothing), IO, Char, Either, return, ($))
 import qualified Data.Map as M
 import qualified Data.List as L
 import Text.Parsec
+import Control.Lens
 import Control.Monad.State as S
 
 import TeX.Lexer
@@ -16,14 +17,12 @@ import TeX.MacroParser
 import TeX.Token
 import TeX.State
 
-lexAll :: Lexer -> CategoryMap -> [Token]
-lexAll lexer map =
-  case lexToken lexer map of
-    Just (tok, newLexer) -> tok:(lexAll newLexer map)
-    Nothing -> []
-
 defaultMap :: CategoryMap
-defaultMap = set '{' BeginGroup $ set '}' EndGroup $ set '#' Parameter $ set '^' Superscript initialMap
+defaultMap =
+  (category '{' .~ Just BeginGroup) $
+  (category '}' .~ Just EndGroup) $
+  (category '#' .~ Just Parameter) $
+  (category '^' .~ Just Superscript) initialMap
 
 tryParser :: TeXParser a -> [Char] -> Either ParseError a
 tryParser parser str =

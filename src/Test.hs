@@ -1,7 +1,7 @@
 module Main where
 
 import Data.Either (Either(Right), isLeft)
-import Prelude (Char, Maybe(Just, Nothing), IO, Eq, Show, String, Bool
+import Prelude (Char, Maybe(Just), IO, Eq, Show, String, Bool
                , return, putStrLn, sequence, all, id
                , ($), (<*), (+), (==)
                )
@@ -11,6 +11,7 @@ import Test.HUnit ( Assertion, Test
                   , (~:)
                   )
 import Text.Parsec (ParseError, eof)
+import Control.Lens ((.~))
 
 import TeX.Category
 import TeX.Def
@@ -20,19 +21,14 @@ import TeX.MacroParser
 import TeX.Parser
 import TeX.Token
 import TeX.State
+import TeX.Util
 
 myLexerMap :: CategoryMap
-myLexerMap = set '^' Superscript initialMap
+myLexerMap = (category '^' .~ Just Superscript) initialMap
 
 assertLexesTo :: [[Char]] -> [Token] -> Assertion
 assertLexesTo lines tokens =
-  assertEqual "" (lexAll (mkLexer lines) myLexerMap) tokens
-
-lexAll :: Lexer -> CategoryMap -> [Token]
-lexAll lexer map =
-  case lexToken lexer map of
-    Just (token, newLexer) -> token:(lexAll newLexer map)
-    Nothing -> []
+  assertEqual "" (lexAll (mkLexer lines) (mkState myLexerMap)) tokens
 
 lexerTests :: Test
 lexerTests =
@@ -58,7 +54,9 @@ lexerTests =
   ]
 
 myParserMap :: CategoryMap
-myParserMap = set '#' Parameter $ set '{' BeginGroup $ set '}' EndGroup $ initialMap
+myParserMap = (category '#' .~ Just Parameter) $
+              (category '{' .~ Just BeginGroup) $
+              (category '}' .~ Just EndGroup) $ initialMap
 
 doParse :: TeXParser a -> [[Char]] -> Either ParseError a
 doParse parser lines =

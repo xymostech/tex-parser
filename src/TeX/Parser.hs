@@ -25,7 +25,7 @@ myTrace str a = traceShow (str, a) a
 data TeXLexerStream = TeXLexerStream
   { streamLexer :: Lexer
   , streamNextTokens :: [Token]
-  , streamCategoryMap :: CategoryMap
+  , streamState :: TeXState
   }
   deriving (Show)
 
@@ -34,18 +34,18 @@ mkStream state lines =
   TeXLexerStream
   { streamLexer = mkLexer lines
   , streamNextTokens = []
-  , streamCategoryMap = stateCategoryMap state
+  , streamState = state
   }
 
 instance Stream TeXLexerStream Identity Token where
   -- uncons :: TeXLexerStream -> S.State TeXState (Maybe (Token, TeXLexerStream))
-  uncons (TeXLexerStream lexer [] catMap) = do
-    return $ case lexToken lexer catMap of
+  uncons (TeXLexerStream lexer [] state) = do
+    return $ case lexToken lexer state of
                Just (lexedToken, newLexer) ->
-                 Just (lexedToken, TeXLexerStream newLexer [] catMap)
+                 Just (lexedToken, TeXLexerStream newLexer [] state)
                Nothing -> Nothing
-  uncons (TeXLexerStream lexer (tok:toks) catMap) = do
-    return $ Just (tok, TeXLexerStream lexer toks catMap)
+  uncons (TeXLexerStream lexer (tok:toks) state) = do
+    return $ Just (tok, TeXLexerStream lexer toks state)
 
 type TeXParser = ParsecT TeXLexerStream TeXState Identity
 
