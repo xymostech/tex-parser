@@ -8,14 +8,15 @@ import Text.Parsec
 import Control.Lens
 import Control.Monad.State as S
 
-import TeX.Lexer
 import TeX.Category
-import TeX.Parser.Parser
-import TeX.Parser.HorizontalList
 import TeX.Def
+import TeX.Lexer
+import TeX.Parser.HorizontalList
 import TeX.Parser.MacroParser
-import TeX.Token
+import TeX.Parser.Parser
+import TeX.Parser.Prim
 import TeX.State
+import TeX.Token
 
 defaultMap :: CategoryMap
 defaultMap =

@@ -7,6 +7,7 @@ import Data.Char (ord)
 import Control.Lens ((^.), (.~))
 
 import TeX.Parser.Parser
+import TeX.Parser.Prim
 import TeX.Token
 import TeX.Category
 import TeX.Def

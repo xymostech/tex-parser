@@ -9,10 +9,11 @@ import Prelude ( Char, Int, Show, Eq
                )
 import Text.Parsec
 
-import TeX.Parser.Parser
 import TeX.Category
-import TeX.Token
 import TeX.Parser.MacroParser
+import TeX.Parser.Parser
+import TeX.Parser.Prim
+import TeX.Token
 
 data HorizontalListElem
   = HBoxChar Char
