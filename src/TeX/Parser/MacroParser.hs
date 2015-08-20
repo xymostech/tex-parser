@@ -1,4 +1,4 @@
-module TeX.MacroParser where
+module TeX.Parser.MacroParser where
 
 import Text.Parsec ( try, option, choice, lookAhead, anyToken, modifyState, getState
                    , (<|>), (<?>)
@@ -6,7 +6,7 @@ import Text.Parsec ( try, option, choice, lookAhead, anyToken, modifyState, getS
 import Data.Char (ord)
 import Control.Lens ((^.), (.~))
 
-import TeX.Parser
+import TeX.Parser.Parser
 import TeX.Token
 import TeX.Category
 import TeX.Def

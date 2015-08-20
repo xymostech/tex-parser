@@ -10,10 +10,10 @@ import Control.Monad.State as S
 
 import TeX.Lexer
 import TeX.Category
-import TeX.Parser
-import TeX.HorizontalList
+import TeX.Parser.Parser
+import TeX.Parser.HorizontalList
 import TeX.Def
-import TeX.MacroParser
+import TeX.Parser.MacroParser
 import TeX.Token
 import TeX.State
 

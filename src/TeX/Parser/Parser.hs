@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeSynonymInstances,
              FlexibleInstances,
              MultiParamTypeClasses #-}
-module TeX.Parser where
+module TeX.Parser.Parser where
 
 import Prelude ( Maybe(Just, Nothing), Show, Char, Either()
                , show, otherwise, return

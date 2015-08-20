@@ -1,4 +1,4 @@
-module TeX.HorizontalList
+module TeX.Parser.HorizontalList
 ( HorizontalListElem(HBoxChar, HPenalty)
 , horizontalList
 )
@@ -9,10 +9,10 @@ import Prelude ( Char, Int, Show, Eq
                )
 import Text.Parsec
 
-import TeX.Parser
+import TeX.Parser.Parser
 import TeX.Category
 import TeX.Token
-import TeX.MacroParser
+import TeX.Parser.MacroParser
 
 data HorizontalListElem
   = HBoxChar Char

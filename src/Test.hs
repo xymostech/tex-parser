@@ -15,12 +15,12 @@ import Control.Lens ((.~))
 
 import TeX.Category
 import TeX.Def
-import TeX.HorizontalList
 import TeX.Lexer
-import TeX.MacroParser
-import TeX.Parser
-import TeX.Token
+import TeX.Parser.HorizontalList
+import TeX.Parser.MacroParser
+import TeX.Parser.Parser
 import TeX.State
+import TeX.Token
 import TeX.Util
 
 myLexerMap :: CategoryMap
