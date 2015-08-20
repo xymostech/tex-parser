@@ -151,6 +151,9 @@ parserTests =
   -- TODO(emily): this should actually be a glue
   , "spaces" ~: assertParsesTo horizontalList ["a %"] [HBoxChar 'a', HBoxChar ' ']
   , "stores and expands macros" ~: assertParsesTo horizontalList ["\\def\\a#1{#1#1}\\a{b}%"] [HBoxChar 'b', HBoxChar 'b']
+  , "parses groups" ~: assertParsesTo horizontalList ["a{b{c}d}e%"] [HBoxChar 'a', HBoxChar 'b', HBoxChar 'c', HBoxChar 'd', HBoxChar 'e']
+  , "fails on unterminated groups" ~: assertDoesntParse horizontalList ["a{b%"]
+  , "fails on extra closing braces" ~: assertDoesntParse horizontalList ["a{b}}%"]
   ]
 
 doTest :: String -> Test -> IO Bool

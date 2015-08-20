@@ -5,7 +5,7 @@ module TeX.HorizontalList
 where
 
 import Prelude ( Char, Int, Show, Eq
-               , (<$>), (>>), (<*>), ($)
+               , (<$>), (>>), (<*>), ($), (<*), (*>), (++)
                )
 import Text.Parsec
 
@@ -26,7 +26,12 @@ horizontalListElem =
   HBoxChar <$> (extractChar <$> (categoryToken Space))
   <?> "horizontal list elem"
 
+groupedHorizontalList :: TeXParser [HorizontalListElem]
+groupedHorizontalList =
+  (categoryToken BeginGroup) *> horizontalList <* (categoryToken EndGroup)
+
 horizontalList :: TeXParser [HorizontalListElem]
 horizontalList = do
   option [] $ ((:) <$> horizontalListElem <*> horizontalList) <|>
+              ((++) <$> groupedHorizontalList <*> horizontalList)  <|>
               (parseMacros >> horizontalList)
