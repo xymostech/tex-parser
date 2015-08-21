@@ -10,10 +10,11 @@ import Prelude ( Char, Int, Show, Eq
 import Text.Parsec
 
 import TeX.Category
-import TeX.Parser.MacroParser
+import TeX.Parser.Expand
 import TeX.Parser.Parser
 import TeX.Parser.Prim
 import TeX.Token
+import TeX.Parser.Assignment
 
 data HorizontalListElem
   = HBoxChar Char
@@ -21,18 +22,21 @@ data HorizontalListElem
   deriving (Eq, Show)
 
 horizontalListElem :: TeXParser HorizontalListElem
-horizontalListElem =
+horizontalListElem = do
+  expand
   HBoxChar <$> (extractChar <$> (categoryToken Letter)) <|>
-  HBoxChar <$> (extractChar <$> (categoryToken Other)) <|>
-  HBoxChar <$> (extractChar <$> (categoryToken Space))
-  <?> "horizontal list elem"
+   HBoxChar <$> (extractChar <$> (categoryToken Other)) <|>
+   HBoxChar <$> (extractChar <$> (categoryToken Space))
+   <?> "horizontal list elem"
 
 groupedHorizontalList :: TeXParser [HorizontalListElem]
 groupedHorizontalList =
-  (categoryToken BeginGroup) *> horizontalList <* (categoryToken EndGroup)
+  (expand >> categoryToken BeginGroup) *>
+   horizontalList <*
+   (expand >> categoryToken EndGroup)
 
 horizontalList :: TeXParser [HorizontalListElem]
 horizontalList = do
-  option [] $ ((:) <$> horizontalListElem <*> horizontalList) <|>
-              ((++) <$> groupedHorizontalList <*> horizontalList)  <|>
-              (parseMacros >> horizontalList)
+  option [] $ (assignment >> horizontalList) <|>
+              ((:) <$> horizontalListElem <*> horizontalList) <|>
+              ((++) <$> groupedHorizontalList <*> horizontalList)

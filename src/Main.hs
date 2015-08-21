@@ -10,6 +10,7 @@ import Control.Monad.State as S
 
 import TeX.Category
 import TeX.Def
+import TeX.Parser.Expand
 import TeX.Lexer
 import TeX.Parser.HorizontalList
 import TeX.Parser.MacroParser
@@ -27,7 +28,7 @@ defaultMap =
 
 tryParser :: TeXParser a -> [Char] -> Either ParseError a
 tryParser parser str =
-  TeX.Parser.runParser parser (Just $ mkState defaultMap) lines
+  TeX.Parser.Parser.runParser parser (Just $ mkState defaultMap) lines
   where
     lines = [str]
 

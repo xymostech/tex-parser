@@ -54,9 +54,6 @@ prependTokens newToks = do
   (TeXLexerStream lexer toks catMap) <- getInput
   setInput $ (TeXLexerStream lexer (newToks ++ toks) catMap)
 
-expand :: TeXParser a -> TeXParser a
-expand parser = parser
-
 runParser :: TeXParser a -> Maybe TeXState -> [[Char]] -> Either ParseError a
 runParser parser maybeState lines =
   runIdentity toParse

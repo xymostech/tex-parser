@@ -1,10 +1,10 @@
 module TeX.Parser.MacroParser where
 
-import Text.Parsec ( try, option, choice, lookAhead, anyToken, modifyState, getState
+import Text.Parsec ( try, option, choice, lookAhead, anyToken, getState
                    , (<|>), (<?>)
                    )
 import Data.Char (ord)
-import Control.Lens ((^.), (.~))
+import Control.Lens ((^.))
 
 import TeX.Parser.Parser
 import TeX.Parser.Prim
@@ -176,15 +176,11 @@ runExpansion def = do
   tokens <- parseExpansion def
   prependTokens tokens
 
-parseMacros :: TeXParser ()
-parseMacros = do
+expandMacros :: TeXParser [Token]
+expandMacros = do
   tok <- lookAhead controlSequence
-  case extractControlSequence tok of
-    "def" -> do
-      def@(Def name _ _) <- parseDef
-      modifyState (stateDefinition name .~ Just def)
-    name -> do
-      maybeDef <- (^.) <$> getState <*> (return $ stateDefinition name)
-      case maybeDef of
-        Just def -> runExpansion def
-        Nothing -> fail "unknown macro"
+  let name = extractControlSequence tok
+  maybeDef <- (^.) <$> getState <*> (return $ stateDefinition name)
+  case maybeDef of
+    Just def -> parseExpansion def
+    Nothing -> fail $ "unknown macro " ++ name
