@@ -32,4 +32,4 @@ emptyDefMap :: DefinitionMap
 emptyDefMap = DefinitionMap $ M.empty
 
 definition :: Functor f => String -> (Maybe Def -> f (Maybe Def)) -> DefinitionMap -> f (DefinitionMap)
-definition = makeLens (\(DefinitionMap x) -> x) DefinitionMap
+definition = makeMapLens (\(DefinitionMap x) -> x) DefinitionMap

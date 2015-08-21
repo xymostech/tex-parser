@@ -2,24 +2,31 @@
            , Rank2Types #-}
 module TeX.State
 ( TeXState(), mkState
-, stateCategory, stateDefinition
+, stateCategory, stateDefinition, stateCount
 )
 where
 
-import Control.Lens
+import Control.Lens (Lens', lens, makeLenses, (^.), (.~))
 
 import TeX.Category
 import TeX.Def
+import TeX.Register
+import TeX.Count
 
 data TeXState = TeXState
   { _categoryMap :: CategoryMap
   , _definitionMap :: DefinitionMap
+  , _countMap :: RegisterMap Count
   }
   deriving (Show)
 makeLenses ''TeXState
 
 mkState :: CategoryMap -> TeXState
-mkState catMap = TeXState catMap emptyDefMap
+mkState catMap = TeXState
+                 { _categoryMap = catMap
+                 , _definitionMap = emptyDefMap
+                 , _countMap = emptyRegMap 0
+                 }
 
 stateAccessorWithDefault :: b -> Lens' a (Maybe b) -> Lens' TeXState a ->
                             Lens' TeXState b
@@ -51,3 +58,6 @@ stateCategory c = stateAccessorWithDefault Other (category c) categoryMap
 
 stateDefinition :: [Char] -> Lens' TeXState (Maybe Def)
 stateDefinition name = stateAccessor (definition name) definitionMap
+
+stateCount :: Int -> Lens' TeXState (Maybe Count)
+stateCount index = stateAccessor (register index) countMap

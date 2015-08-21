@@ -54,7 +54,7 @@ newtype CategoryMap = CategoryMap (M.Map Char Category)
 --category :: Char -> Lens' CategoryMap (Maybe Category)
 category :: Functor f => Char -> (Maybe Category -> f (Maybe Category)) ->
             CategoryMap -> f CategoryMap
-category = makeLens (\(CategoryMap x) -> x) CategoryMap
+category = makeMapLens (\(CategoryMap x) -> x) CategoryMap
 
 empty :: CategoryMap
 empty = CategoryMap M.empty
