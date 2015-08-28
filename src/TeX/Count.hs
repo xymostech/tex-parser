@@ -4,7 +4,7 @@ module TeX.Count
 where
 
 data Count = Count Integer | CountOverflow
-  deriving Show
+  deriving (Eq, Show)
 
 checkOverflowed :: Count -> Count
 checkOverflowed (Count num)

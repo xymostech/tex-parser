@@ -1,17 +1,19 @@
+{-# LANGUAGE Rank2Types #-}
 module Main where
 
-import Data.Either (Either(Right), isLeft)
+import Data.Either (Either(Left, Right), isLeft)
 import Prelude (Char, Maybe(Just), IO, Eq, Show, String, Bool
                , return, putStrLn, sequence, all, id
-               , ($), (<*), (+), (==)
+               , ($), (<*), (+), (==), (>>)
                )
 import System.Exit (exitSuccess, exitFailure)
 import Test.HUnit ( Assertion, Test
-                  , assertEqual, assertBool, test, runTestTT, failures, errors
+                  , assertEqual, assertBool, assertFailure, test, runTestTT
+                  , failures, errors
                   , (~:)
                   )
-import Text.Parsec (ParseError, eof)
-import Control.Lens ((.~))
+import Text.Parsec (ParseError, eof, getState)
+import Control.Lens (Lens', (^.), (.~))
 
 import TeX.Category
 import TeX.Def
@@ -19,6 +21,7 @@ import TeX.Lexer
 import TeX.Parser.HorizontalList
 import TeX.Parser.MacroParser
 import TeX.Parser.Parser
+import TeX.Parser.Assignment
 import TeX.State
 import TeX.Token
 import TeX.Util
@@ -144,6 +147,22 @@ macroTests =
     -- dotDef = \def\a.#1.#2{#1#2}
     dotDef = (Def "a" [PTToken (CharToken '.' Other), PTParameter 1, PTToken (CharToken '.' Other), PTParameter 2] [RTParameter 1, RTParameter 2])
 
+assertStateReturns :: (Eq b, Show b) => TeXParser a -> [[Char]] -> (Lens' TeXState b) -> b -> Assertion
+assertStateReturns parser lines accessor expected =
+  case eitherFinalState of
+    Left _ -> assertFailure "parsing failed"
+    Right finalState -> assertEqual "" expected (finalState ^. accessor)
+  where
+    eitherFinalState = runParser (parser >> eof >> getState) (Just $ mkState myParserMap) lines
+
+stateTests :: Test
+stateTests =
+  test
+  [ "defs are assigned" ~: assertStateReturns assignment ["\\def\\a {1}%"] (stateDefinition "a") (Just $ Def "a" [] [RTToken (CharToken '1' Other)])
+  , "counts are assigned" ~: assertStateReturns assignment ["\\count0=1%"] (stateCount 0) (Just 1)
+  , "counts don't need = signs" ~: assertStateReturns assignment ["\\count0 1%"] (stateCount 0) (Just 1)
+  ]
+
 parserTests :: Test
 parserTests =
   test
@@ -167,6 +186,7 @@ main = do
   results <- sequence
             [ doTest "lexer" lexerTests
             , doTest "macros" macroTests
+            , doTest "state" stateTests
             , doTest "parser" parserTests
             ]
   if all id results
