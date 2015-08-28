@@ -22,18 +22,18 @@ data HorizontalListElem
   deriving (Eq, Show)
 
 horizontalListElem :: TeXParser HorizontalListElem
-horizontalListElem = do
+horizontalListElem =
   expand
-  HBoxChar <$> (extractChar <$> (categoryToken Letter)) <|>
+  (HBoxChar <$> (extractChar <$> (categoryToken Letter)) <|>
    HBoxChar <$> (extractChar <$> (categoryToken Other)) <|>
    HBoxChar <$> (extractChar <$> (categoryToken Space))
-   <?> "horizontal list elem"
+   <?> "horizontal list elem")
 
 groupedHorizontalList :: TeXParser [HorizontalListElem]
 groupedHorizontalList =
-  (expand >> categoryToken BeginGroup) *>
+  (expand $ categoryToken BeginGroup) *>
    horizontalList <*
-   (expand >> categoryToken EndGroup)
+   (expand $ categoryToken EndGroup)
 
 horizontalList :: TeXParser [HorizontalListElem]
 horizontalList = do

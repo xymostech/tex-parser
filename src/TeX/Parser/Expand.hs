@@ -17,6 +17,9 @@ runExpanders [] = fail "all expanders failed"
 runExpanders (expander:rest) =
   expander <|> runExpanders rest
 
-expand :: TeXParser ()
-expand =
-  option () $ (runExpanders expanders) >>= prependTokens >> expand
+doExpand :: TeXParser ()
+doExpand = (runExpanders expanders) >>= prependTokens >> (doExpand <|> return ())
+
+expand :: TeXParser a -> TeXParser a
+expand parser =
+  (try $ doExpand >> parser) <|> parser <?> "expand"

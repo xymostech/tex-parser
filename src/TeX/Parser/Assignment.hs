@@ -4,14 +4,15 @@ where
 import Text.Parsec ((<|>), (<?>), modifyState, choice)
 import Control.Lens ((.~))
 
-import TeX.Def hiding (definition)
-import TeX.Parser.Parser
-import TeX.Parser.Prim
-import TeX.Parser.MacroParser
-import TeX.Token
-import TeX.State
 import TeX.Category
 import TeX.Count
+import TeX.Def hiding (definition)
+import TeX.Parser.Expand
+import TeX.Parser.MacroParser
+import TeX.Parser.Parser
+import TeX.Parser.Prim
+import TeX.State
+import TeX.Token
 
 unimplemented :: TeXParser a
 unimplemented = fail "not implemented"
@@ -24,7 +25,7 @@ prefix = unimplemented
 
 macroAssignment :: TeXParser ()
 macroAssignment =
-  (definition >>= doSet)
+  (expand definition >>= doSet)
    <|> (prefix >> macroAssignment)
   where
     doSet def@(Def name _ _) = modifyState (stateDefinition name .~ Just def)
@@ -34,21 +35,26 @@ arithmetic = unimplemented
 
 optionalSpaces :: TeXParser ()
 optionalSpaces =
-  (categoryToken Space >> optionalSpaces) <|> (return ())
+  (expand (categoryToken Space) >> optionalSpaces) <|>
+  (return ()) <?>
+  "optional spaces"
 
 optionalSpace :: TeXParser ()
 optionalSpace =
-  (categoryToken Space >> return ()) <|> (return ())
+  (expand (categoryToken Space) >> return ()) <|>
+  (return ()) <?>
+  "optional space"
 
 equals :: TeXParser ()
 equals =
-  (optionalSpaces >> exactToken (CharToken '=' Other) >> return ()) <|>
-  optionalSpaces
+  (optionalSpaces >> expand (exactToken (CharToken '=' Other)) >> return ()) <|>
+  optionalSpaces <?>
+  "optional equals"
 
 plusOrMinus :: TeXParser Integer
 plusOrMinus =
-  (exactToken (CharToken '+' Other) >> return 1) <|>
-  (exactToken (CharToken '-' Other) >> return (-1)) <?>
+  (expand (exactToken (CharToken '+' Other)) >> return 1) <|>
+  (expand (exactToken (CharToken '-' Other)) >> return (-1)) <?>
   "plus or minus"
 
 optionalSigns :: TeXParser Integer
@@ -62,9 +68,9 @@ internalInteger = unimplemented
 
 integerConstant :: TeXParser Integer
 integerConstant =
-  fst <$> recInteger
+  fst <$> recInteger <?> "integer constant"
   where
-    digit = choice [exactToken (CharToken x Other) | x <- ['0'..'9']]
+    digit = expand $ choice [exactToken (CharToken x Other) | x <- ['0'..'9']]
 
     recInteger :: TeXParser (Integer, Integer)
     recInteger =
@@ -87,9 +93,9 @@ normalInteger :: TeXParser Integer
 normalInteger =
   internalInteger <|>
   (integerConstant <* optionalSpace) <|>
-  (exactToken (CharToken '\'' Other) >> octalConstant <* optionalSpace) <|>
-  (exactToken (CharToken '"' Other) >> hexadecimalConstant <* optionalSpace) <|>
-  (exactToken (CharToken '`' Other) >> characterToken <* optionalSpace) <?>
+  (expand (exactToken (CharToken '\'' Other)) >> octalConstant <* optionalSpace) <|>
+  (expand (exactToken (CharToken '"' Other)) >> hexadecimalConstant <* optionalSpace) <|>
+  (expand (exactToken (CharToken '`' Other)) >> characterToken <* optionalSpace) <?>
   "normal integer"
 
 coercedInteger :: TeXParser Integer
@@ -99,7 +105,7 @@ unsignedNumber :: TeXParser Integer
 unsignedNumber = normalInteger <|> coercedInteger <?> "unsigned number"
 
 number :: TeXParser Integer
-number = (*) <$> optionalSigns <*> unsignedNumber
+number = (*) <$> optionalSigns <*> unsignedNumber <?> "number"
 
 data IntegerVariable =
   IntegerParameter String |
@@ -123,7 +129,7 @@ integerVariable =
     integerParameter = unimplemented
     countDefToken = unimplemented
     literalCount =
-      LiteralCount <$> (exactToken (ControlSequence "count") >> eightBitNumber)
+      LiteralCount <$> (expand (exactToken (ControlSequence "count")) >> eightBitNumber)
 
 integerVariableAssignment :: TeXParser ()
 integerVariableAssignment = do
@@ -149,7 +155,7 @@ simpleAssignment =
 
 nonMacroAssignment :: TeXParser ()
 nonMacroAssignment =
-  simpleAssignment <|> (exactToken (ControlSequence "global") >> nonMacroAssignment)
+  simpleAssignment <|> (expand (exactToken (ControlSequence "global")) >> nonMacroAssignment)
 
 assignment :: TeXParser ()
 assignment = nonMacroAssignment <|> macroAssignment
