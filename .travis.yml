@@ -1,0 +1,4 @@
+language: haskell
+ghc: 7.10
+script:
+  - cabal configure && cabal build && cabal run tex-parser-tests
