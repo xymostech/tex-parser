@@ -23,6 +23,6 @@ extractControlSequence _ = error "Can't extract control sequence from token"
 charCode :: Token -> Maybe Integer
 charCode (CharToken c _)
   | c >= '0' && c <= '9' = Just $ fromIntegral $ (ord c) - (ord '0')
-  | c >= 'A' && c <= 'F' = Just $ fromIntegral $ (ord c) - (ord 'A')
+  | c >= 'A' && c <= 'F' = Just $ fromIntegral $ (ord c) - (ord 'A') + 10
   | otherwise = Nothing
 charCode _ = Nothing
