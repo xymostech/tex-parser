@@ -176,8 +176,8 @@ runExpansion def = do
   tokens <- parseExpansion def
   prependTokens tokens
 
-expandMacros :: TeXParser [Token]
-expandMacros = do
+expandMacro :: (TeXParser a -> TeXParser a) -> TeXParser [Token]
+expandMacro _ = do
   tok <- lookAhead controlSequence
   let name = extractControlSequence tok
   maybeDef <- (^.) <$> getState <*> (return $ stateDefinition name)

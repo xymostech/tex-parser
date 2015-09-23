@@ -1,3 +1,5 @@
+{-# LANGUAGE Rank2Types #-}
+
 module TeX.Parser.Expand
 ( expand
 )
@@ -5,21 +7,23 @@ where
 
 import Text.Parsec
 
-import TeX.Parser.Parser
 import TeX.Parser.MacroParser
+import TeX.Parser.Parser
 import TeX.Token
 
-expanders :: [TeXParser [Token]]
-expanders = [expandMacros]
+type TokenExpander = Expander -> TeXParser [Token]
 
-runExpanders :: [TeXParser [Token]] -> TeXParser [Token]
+expanders :: [TokenExpander]
+expanders = [expandMacro]
+
+runExpanders :: [TokenExpander] -> TeXParser [Token]
 runExpanders [] = fail "all expanders failed"
 runExpanders (expander:rest) =
-  expander <|> runExpanders rest
+  expander expand <|> runExpanders rest
 
 doExpand :: TeXParser ()
 doExpand = (runExpanders expanders) >>= prependTokens >> (doExpand <|> return ())
 
-expand :: TeXParser a -> TeXParser a
+expand :: Expander
 expand parser =
   (try $ doExpand >> parser) <|> parser <?> "expand"

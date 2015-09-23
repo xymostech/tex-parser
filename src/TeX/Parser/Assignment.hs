@@ -31,9 +31,9 @@ arithmetic = unimplemented
 
 integerVariableAssignment :: TeXParser ()
 integerVariableAssignment = do
-  variable <- integerVariable
-  equals
-  value <- count
+  variable <- integerVariable expand
+  equals expand
+  value <- count expand
   case variable of
     IntegerParameter _ -> unimplemented
     CountDefToken _ -> unimplemented

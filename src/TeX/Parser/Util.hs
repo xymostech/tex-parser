@@ -1,3 +1,5 @@
+{-# LANGUAGE Rank2Types #-}
+
 module TeX.Parser.Util
 ( unimplemented
 , optionalSpace, optionalSpaces
@@ -11,7 +13,6 @@ import Text.Parsec ((<|>), (<?>), choice)
 
 import TeX.Category
 import TeX.Count
-import TeX.Parser.Expand
 import TeX.Parser.Parser
 import TeX.Parser.Prim
 import TeX.Token
@@ -19,41 +20,41 @@ import TeX.Token
 unimplemented :: TeXParser a
 unimplemented = fail "not implemented"
 
-optionalSpaces :: TeXParser ()
-optionalSpaces =
-  (expand (categoryToken Space) >> optionalSpaces) <|>
+optionalSpaces :: Expander -> TeXParser ()
+optionalSpaces expand =
+  (expand (categoryToken Space) >> optionalSpaces expand) <|>
   (return ()) <?>
   "optional spaces"
 
-optionalSpace :: TeXParser ()
-optionalSpace =
+optionalSpace :: Expander -> TeXParser ()
+optionalSpace expand =
   (expand (categoryToken Space) >> return ()) <|>
   (return ()) <?>
   "optional space"
 
-equals :: TeXParser ()
-equals =
-  (optionalSpaces >> expand (exactToken (CharToken '=' Other)) >> return ()) <|>
-  optionalSpaces <?>
+equals :: Expander -> TeXParser ()
+equals expand =
+  (optionalSpaces expand >> expand (exactToken (CharToken '=' Other)) >> return ()) <|>
+  optionalSpaces expand <?>
   "optional equals"
 
-plusOrMinus :: TeXParser Integer
-plusOrMinus =
+plusOrMinus :: Expander -> TeXParser Integer
+plusOrMinus expand =
   (expand (exactToken (CharToken '+' Other)) >> return 1) <|>
   (expand (exactToken (CharToken '-' Other)) >> return (-1)) <?>
   "plus or minus"
 
-optionalSigns :: TeXParser Integer
-optionalSigns =
-  (((*) <$> plusOrMinus <*> optionalSigns) <* optionalSpaces) <|>
-  (optionalSpaces >> return 1) <?>
+optionalSigns :: Expander -> TeXParser Integer
+optionalSigns expand =
+  (((*) <$> plusOrMinus expand <*> optionalSigns expand) <* optionalSpaces expand) <|>
+  (optionalSpaces expand >> return 1) <?>
   "optional sign"
 
 internalInteger :: TeXParser Integer
 internalInteger = unimplemented
 
-integerConstant :: TeXParser Integer
-integerConstant =
+integerConstant :: Expander -> TeXParser Integer
+integerConstant expand =
   fst <$> recInteger <?> "integer constant"
   where
     digit = expand $ choice [exactToken (CharToken x Other) | x <- ['0'..'9']]
@@ -75,34 +76,36 @@ octalConstant = unimplemented
 characterToken :: TeXParser Integer
 characterToken = unimplemented
 
-normalInteger :: TeXParser Integer
-normalInteger =
+normalInteger :: Expander -> TeXParser Integer
+normalInteger expand =
   internalInteger <|>
-  (integerConstant <* optionalSpace) <|>
-  (expand (exactToken (CharToken '\'' Other)) >> octalConstant <* optionalSpace) <|>
-  (expand (exactToken (CharToken '"' Other)) >> hexadecimalConstant <* optionalSpace) <|>
-  (expand (exactToken (CharToken '`' Other)) >> characterToken <* optionalSpace) <?>
+  (integerConstant expand <* optionalSpace expand) <|>
+  (expand (exactToken (CharToken '\'' Other)) >> octalConstant <* optionalSpace expand) <|>
+  (expand (exactToken (CharToken '"' Other)) >> hexadecimalConstant <* optionalSpace expand) <|>
+  (expand (exactToken (CharToken '`' Other)) >> characterToken <* optionalSpace expand) <?>
   "normal integer"
 
 coercedInteger :: TeXParser Integer
 coercedInteger = unimplemented
 
-unsignedNumber :: TeXParser Integer
-unsignedNumber = normalInteger <|> coercedInteger <?> "unsigned number"
+unsignedNumber :: Expander -> TeXParser Integer
+unsignedNumber expand =
+    normalInteger expand <|> coercedInteger <?> "unsigned number"
 
-number :: TeXParser Integer
-number = (*) <$> optionalSigns <*> unsignedNumber <?> "number"
+number :: Expander -> TeXParser Integer
+number expand =
+    (*) <$> optionalSigns expand <*> unsignedNumber expand <?> "number"
 
-eightBitNumber :: TeXParser Integer
-eightBitNumber = do
-  value <- number
+eightBitNumber :: Expander -> TeXParser Integer
+eightBitNumber expand = do
+  value <- number expand
   if value < 0 || value >= 256
   then fail $ "number too large: " ++ (show value)
   else return value
 
-count :: TeXParser Count
-count = do
-  value <- fromInteger <$> number
+count :: Expander -> TeXParser Count
+count expand = do
+  value <- fromInteger <$> number expand
   case value of
     CountOverflow -> fail "number too large"
     _ -> return value
@@ -112,8 +115,8 @@ data IntegerVariable =
   CountDefToken String |
   LiteralCount Integer
 
-integerVariable :: TeXParser IntegerVariable
-integerVariable =
+integerVariable :: Expander -> TeXParser IntegerVariable
+integerVariable expand =
   integerParameter <|>
   countDefToken <|>
   literalCount <?>
@@ -122,4 +125,5 @@ integerVariable =
     integerParameter = unimplemented
     countDefToken = unimplemented
     literalCount =
-      LiteralCount <$> (expand (exactToken (ControlSequence "count")) >> eightBitNumber)
+      LiteralCount <$> (expand (exactToken (ControlSequence "count")) >>
+                               eightBitNumber expand)

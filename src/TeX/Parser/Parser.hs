@@ -1,10 +1,11 @@
 {-# LANGUAGE TypeSynonymInstances,
              FlexibleInstances,
+             RankNTypes,
              MultiParamTypeClasses #-}
 module TeX.Parser.Parser where
 
 import Prelude ( Maybe(Just, Nothing), Show, Char, Either()
-               , return
+               , return, id
                , ($), (++)
                )
 import Control.Monad.Identity (Identity, runIdentity)
@@ -64,3 +65,8 @@ runParser parser maybeState lines =
     state = case maybeState of
               Just s -> s
               Nothing -> mkState initialMap
+
+type Expander = forall a. TeXParser a -> TeXParser a
+
+noExpand :: Expander
+noExpand = id
