@@ -1,4 +1,7 @@
-module TeX.Parser.MacroParser where
+module TeX.Parser.MacroParser
+( parseDef, expandMacro, parseMacroExpansion
+)
+where
 
 import Text.Parsec ( try, option, choice, lookAhead, anyToken, getState
                    , (<|>), (<?>)
@@ -165,16 +168,11 @@ replaceParams ((RTToken tok):rest) args = tok:(replaceParams rest args)
 replaceParams ((RTParameter num):rest) args =
   (args !! (num - 1)) ++ replaceParams rest args
 
-parseExpansion :: Def -> TeXParser [Token]
-parseExpansion (Def func params replacement) = do
+parseMacroExpansion :: Def -> TeXParser [Token]
+parseMacroExpansion (Def func params replacement) = do
   _ <- exactToken (ControlSequence func)
   replacementParams <- parseParams params
   return $ replaceParams replacement replacementParams
-
-runExpansion :: Def -> TeXParser ()
-runExpansion def = do
-  tokens <- parseExpansion def
-  prependTokens tokens
 
 expandMacro :: (TeXParser a -> TeXParser a) -> TeXParser [Token]
 expandMacro _ = do
@@ -182,5 +180,5 @@ expandMacro _ = do
   let name = extractControlSequence tok
   maybeDef <- (^.) <$> getState <*> (return $ stateDefinition name)
   case maybeDef of
-    Just def -> parseExpansion def
+    Just def -> parseMacroExpansion def
     Nothing -> fail $ "unknown macro " ++ name
