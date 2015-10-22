@@ -4,7 +4,7 @@ module Main where
 import Data.Either (Either(Left, Right), isLeft)
 import Prelude (Char, Maybe(Just), IO, Eq, Show, String, Bool
                , return, putStrLn, sequence, all, id
-               , ($), (<*), (+), (==), (>>)
+               , ($), (<*), (+), (==), (>>), (<)
                )
 import System.Exit (exitSuccess, exitFailure)
 import Test.HUnit ( Assertion, Test
@@ -16,15 +16,17 @@ import Text.Parsec (ParseError, eof, getState)
 import Control.Lens (Lens', (^.), (.~))
 
 import TeX.Category
+import TeX.Count
 import TeX.Def
 import TeX.Lexer
 import TeX.Parser.Assignment
 import TeX.Parser.HorizontalList
 import TeX.Parser.MacroParser
 import TeX.Parser.Parser
+import TeX.Parser.Util
+import TeX.Util
 import TeX.State
 import TeX.Token
-import TeX.Util
 
 myLexerMap :: CategoryMap
 myLexerMap = (category '^' .~ Just Superscript) initialMap
@@ -181,6 +183,14 @@ parserTests =
   , "fails on extra closing braces" ~: assertDoesntParse horizontalList ["a{b}}%"]
   ]
 
+utilTests :: Test
+utilTests =
+  test
+  [ "empty strings don't parse to numbers" ~: assertDoesntParse (number noExpand) []
+  , "numbers parse to numbers" ~: assertParsesTo (number noExpand) ["213%"] 213
+  , "counts are comparable" ~: assertBool "" ((3 :: Count) < (4 :: Count))
+  ]
+
 doTest :: String -> Test -> IO Bool
 doTest name tests = do
   putStrLn name
@@ -194,6 +204,7 @@ main = do
             , doTest "macros" macroTests
             , doTest "state" stateTests
             , doTest "parser" parserTests
+            , doTest "util" utilTests
             ]
   if all id results
   then exitSuccess

@@ -54,8 +54,11 @@ internalInteger :: TeXParser Integer
 internalInteger = unimplemented
 
 integerConstant :: Expander -> TeXParser Integer
-integerConstant expand =
-  fst <$> recInteger <?> "integer constant"
+integerConstant expand = do
+  (value, level) <- recInteger
+  if level == 0
+  then fail "no numbers read"
+  else return value
   where
     digit = expand $ choice [exactToken (CharToken x Other) | x <- ['0'..'9']]
 
