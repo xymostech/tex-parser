@@ -2,7 +2,7 @@
 module Main where
 
 import Data.Either (Either(Left, Right), isLeft)
-import Prelude (Char, Maybe(Just), IO, Eq, Show, String, Bool
+import Prelude (Char, Maybe(Just), IO, Eq, Show, String, Bool(True, False)
                , return, putStrLn, sequence, all, id
                , ($), (<*), (+), (==), (>>), (<)
                )
@@ -17,17 +17,18 @@ import Control.Lens (Lens', (^.), (.~))
 
 import TeX.Category
 import TeX.Count
-import TeX.Def
+import TeX.Def hiding (definition)
 import TeX.Lexer
 import TeX.Parser.Assignment
+import TeX.Parser.Conditional
 import TeX.Parser.Expand
 import TeX.Parser.HorizontalList
 import TeX.Parser.MacroParser
 import TeX.Parser.Parser
 import TeX.Parser.Util
-import TeX.Util
 import TeX.State
 import TeX.Token
+import TeX.Util
 
 myLexerMap :: CategoryMap
 myLexerMap = (category '^' .~ Just Superscript) initialMap
@@ -186,6 +187,43 @@ parserTests =
   , "fails on extra closing braces" ~: assertDoesntParse horizontalList ["a{b}}%"]
   ]
 
+conditionalTests :: Test
+conditionalTests =
+  test
+  [ "iftrue heads parse" ~: assertParsesTo (conditionalHead noExpand) ["\\iftrue%"] IfTrue
+  , "ifnum heads parse" ~: assertParsesTo (conditionalHead noExpand) ["\\ifnum 2<3%"] (IfNum (LitCount 2) LessThan (LitCount 3))
+
+  , "number comparisons are parsed correctly" ~: assertParsesTo (conditionalHead noExpand) ["\\ifnum 2<3%"] (IfNum (LitCount 2) LessThan (LitCount 3))
+  , "number comparisons parse counts correctly" ~: assertParsesTo (conditionalHead noExpand) ["\\ifnum \\count0<3%"] (IfNum (IntVar $ LiteralCount 0) LessThan (LitCount 3))
+  , "number comparisons expand" ~: assertParsesTo (assignment expand >> conditionalHead expand) ["\\def\\a{1}\\ifnum\\a=\\a%"] (IfNum (LitCount 1) EqualTo (LitCount 1))
+
+  , "iftrue heads evaluate true" ~: assertParsesTo (evaluateHead IfTrue) [] True
+  , "iffalse heads evaluate true" ~: assertParsesTo (evaluateHead IfFalse) [] False
+  , "< heads evaluate correctly" ~: assertParsesTo (evaluateHead (IfNum (LitCount 3) LessThan (LitCount 2))) [] False
+  , "> heads evaluate correctly" ~: assertParsesTo (evaluateHead (IfNum (LitCount 3) GreaterThan (LitCount 2))) [] True
+  , "= heads evaluate correctly" ~: assertParsesTo (evaluateHead (IfNum (LitCount 5) EqualTo (LitCount 5))) [] True
+
+  , "comparison heads expand \\counts" ~: assertParsesTo (assignment expand >> evaluateHead (IfNum (IntVar (LiteralCount 0)) EqualTo (LitCount 4))) ["\\count0=4%"] True
+
+  , "finds true body" ~: assertParsesTo (runConditionalBody noExpand True) ["a\\fi%"] [CharToken 'a' Letter]
+  , "finds true body with else body" ~: assertParsesTo (runConditionalBody noExpand True) ["a\\else b\\fi%"] [CharToken 'a' Letter]
+  , "finds false body" ~: assertParsesTo (runConditionalBody noExpand False) ["a\\else b\\fi%"] [CharToken 'b' Letter]
+  , "finds false body with no else" ~: assertParsesTo (runConditionalBody noExpand False) ["a\\fi%"] []
+
+  , "expands nested ifs in true" ~: assertParsesTo (runConditionalBody expand True) ["a\\iftrue b\\fi\\fi%"] [CharToken 'a' Letter, CharToken 'b' Letter]
+  , "ignores nested ifs in false" ~: assertParsesTo (runConditionalBody expand True) ["a\\else\\iftrue b\\fi\\fi%"] [CharToken 'a' Letter]
+  , "ignores nested ifs in true" ~: assertParsesTo (runConditionalBody expand False) ["\\iftrue a\\fi\\else b\\fi%"] [CharToken 'b' Letter]
+  , "expands nested ifs in false" ~: assertParsesTo (runConditionalBody expand False) ["a\\else\\iftrue b\\fi\\fi%"] [CharToken 'b' Letter]
+
+  , "bad defs fail inside ifs" ~: assertDoesntParse (runConditionalBody expand True) ["\\def\\a\\fi%"]
+  , "defs expand in ifs" ~: assertStateReturns (runConditionalBody expand True) ["\\def\\a{b}\\fi%"] (stateDefinition "a") (Just $ Def "a" [] [RTToken (CharToken 'b' Letter)])
+  , "setters expand in ifs" ~: assertStateReturns (runConditionalBody expand True) ["\\count0=1\\fi%"] (stateCount 0) (Just 1)
+
+  , "conditionals expand" ~: assertParsesTo (expandConditional expand) ["\\iftrue a\\fi%"] [CharToken 'a' Letter]
+  , "conditional else expands" ~: assertParsesTo (expandConditional expand) ["\\iffalse a\\else b\\fi%"] [CharToken 'b' Letter]
+  , "conditionals evaluate and expand" ~: assertParsesTo (expandConditional expand) ["\\ifnum 2>3 a\\else b\\fi%"] [CharToken 'b' Letter]
+  ]
+
 utilTests :: Test
 utilTests =
   test
@@ -207,6 +245,7 @@ main = do
             , doTest "macros" macroTests
             , doTest "state" stateTests
             , doTest "parser" parserTests
+            , doTest "conditional" conditionalTests
             , doTest "util" utilTests
             ]
   if all id results

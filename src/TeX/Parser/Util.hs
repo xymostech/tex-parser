@@ -117,6 +117,7 @@ data IntegerVariable =
   IntegerParameter String |
   CountDefToken String |
   LiteralCount Integer
+  deriving (Show, Eq)
 
 integerVariable :: Expander -> TeXParser IntegerVariable
 integerVariable expand =

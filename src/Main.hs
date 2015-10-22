@@ -4,12 +4,13 @@ module Main where
 import Prelude
 import qualified Data.Map as M
 import qualified Data.List as L
-import Text.Parsec
+import Text.Parsec hiding (runParser)
 import Control.Lens
 import Control.Monad.State as S
 import Control.Applicative
 
 import TeX.Category
+import TeX.Count
 import TeX.Def
 import TeX.Parser.Expand
 import TeX.Lexer
@@ -18,6 +19,8 @@ import TeX.Parser.HorizontalList
 import TeX.Parser.MacroParser
 import TeX.Parser.Parser
 import TeX.Parser.Prim
+import TeX.Parser.Conditional
+import TeX.Parser.Util
 import TeX.State
 import TeX.Token
 

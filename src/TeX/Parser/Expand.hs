@@ -7,6 +7,7 @@ where
 
 import Text.Parsec
 
+import TeX.Parser.Conditional
 import TeX.Parser.MacroParser
 import TeX.Parser.Parser
 import TeX.Token
@@ -14,7 +15,7 @@ import TeX.Token
 type TokenExpander = Expander -> TeXParser [Token]
 
 expanders :: [TokenExpander]
-expanders = [expandMacro]
+expanders = [expandMacro, expandConditional]
 
 runExpanders :: [TokenExpander] -> TeXParser [Token]
 runExpanders [] = fail "all expanders failed"
