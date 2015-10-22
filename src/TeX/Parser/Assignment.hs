@@ -1,3 +1,4 @@
+{-# LANGUAGE Rank2Types #-}
 module TeX.Parser.Assignment
 where
 
@@ -5,7 +6,6 @@ import Text.Parsec ((<|>), modifyState)
 import Control.Lens ((.~))
 
 import TeX.Def hiding (definition)
-import TeX.Parser.Expand
 import TeX.Parser.MacroParser
 import TeX.Parser.Parser
 import TeX.Parser.Prim
@@ -19,18 +19,18 @@ definition = parseDef
 prefix :: TeXParser Token
 prefix = unimplemented
 
-macroAssignment :: TeXParser ()
-macroAssignment =
+macroAssignment :: Expander -> TeXParser ()
+macroAssignment expand =
   (expand definition >>= doSet)
-   <|> (prefix >> macroAssignment)
+   <|> (prefix >> macroAssignment expand)
   where
     doSet def@(Def name _ _) = modifyState (stateDefinition name .~ Just def)
 
 arithmetic :: TeXParser ()
 arithmetic = unimplemented
 
-integerVariableAssignment :: TeXParser ()
-integerVariableAssignment = do
+integerVariableAssignment :: Expander -> TeXParser ()
+integerVariableAssignment expand = do
   variable <- integerVariable expand
   equals expand
   value <- count expand
@@ -40,17 +40,17 @@ integerVariableAssignment = do
     LiteralCount counter ->
       modifyState (stateCount (fromInteger counter) .~ Just value)
 
-variableAssignment :: TeXParser ()
-variableAssignment =
-  integerVariableAssignment
+variableAssignment :: Expander -> TeXParser ()
+variableAssignment expand =
+  integerVariableAssignment expand
 
-simpleAssignment :: TeXParser ()
-simpleAssignment =
-  variableAssignment <|> arithmetic
+simpleAssignment :: Expander -> TeXParser ()
+simpleAssignment expand =
+  variableAssignment expand <|> arithmetic
 
-nonMacroAssignment :: TeXParser ()
-nonMacroAssignment =
-  simpleAssignment <|> (expand (exactToken (ControlSequence "global")) >> nonMacroAssignment)
+nonMacroAssignment :: Expander -> TeXParser ()
+nonMacroAssignment expand =
+  simpleAssignment expand <|> (expand (exactToken (ControlSequence "global")) >> nonMacroAssignment expand)
 
-assignment :: TeXParser ()
-assignment = nonMacroAssignment <|> macroAssignment
+assignment :: Expander -> TeXParser ()
+assignment expand = nonMacroAssignment expand <|> macroAssignment expand

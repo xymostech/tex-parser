@@ -20,6 +20,7 @@ import TeX.Count
 import TeX.Def
 import TeX.Lexer
 import TeX.Parser.Assignment
+import TeX.Parser.Expand
 import TeX.Parser.HorizontalList
 import TeX.Parser.MacroParser
 import TeX.Parser.Parser
@@ -160,16 +161,18 @@ assertStateReturns parser lines accessor expected =
 stateTests :: Test
 stateTests =
   test
-  [ "defs are assigned" ~: assertStateReturns assignment ["\\def\\a {1}%"] (stateDefinition "a") (Just $ Def "a" [] [RTToken (CharToken '1' Other)])
-  , "defs allow expansion" ~: assertStateReturns (assignment >> assignment) ["\\def\\a{\\def\\b{c}}\\a%"] (stateDefinition "b") (Just $ Def "b" [] [RTToken (CharToken 'c' Letter)])
-  , "counts are assigned" ~: assertStateReturns assignment ["\\count0=1%"] (stateCount 0) (Just 1)
-  , "counts allow extra whitespace" ~: assertStateReturns assignment ["\\count0   =   1 %"] (stateCount 0) (Just 1)
-  , "counts don't need = signs" ~: assertStateReturns assignment ["\\count0 1%"] (stateCount 0) (Just 1)
-  , "counts allow expansion" ~: assertStateReturns (assignment >> assignment) ["\\def\\a{\\count0=1}\\a%"] (stateCount 0) (Just 1)
-  , "count counters allow expansion" ~: assertStateReturns (assignment >> assignment) ["\\def\\a{0}\\count\\a\\a\\a=1%"] (stateCount 0) (Just 1)
-  , "count equals allows expansion" ~: assertStateReturns (assignment >> assignment) ["\\def\\a{=}\\count0\\a1%"] (stateCount 0) (Just 1)
-  , "count value allows expansion" ~: assertStateReturns (assignment >> assignment) ["\\def\\a{10}\\count0=\\a\\a%"] (stateCount 0) (Just 1010)
+  [ "defs are assigned" ~: assertStateReturns assignment' ["\\def\\a {1}%"] (stateDefinition "a") (Just $ Def "a" [] [RTToken (CharToken '1' Other)])
+  , "defs allow expansion" ~: assertStateReturns (assignment' >> assignment') ["\\def\\a{\\def\\b{c}}\\a%"] (stateDefinition "b") (Just $ Def "b" [] [RTToken (CharToken 'c' Letter)])
+  , "counts are assigned" ~: assertStateReturns assignment' ["\\count0=1%"] (stateCount 0) (Just 1)
+  , "counts allow extra whitespace" ~: assertStateReturns assignment' ["\\count0   =   1 %"] (stateCount 0) (Just 1)
+  , "counts don't need = signs" ~: assertStateReturns assignment' ["\\count0 1%"] (stateCount 0) (Just 1)
+  , "counts allow expansion" ~: assertStateReturns (assignment' >> assignment') ["\\def\\a{\\count0=1}\\a%"] (stateCount 0) (Just 1)
+  , "count counters allow expansion" ~: assertStateReturns (assignment' >> assignment') ["\\def\\a{0}\\count\\a\\a\\a=1%"] (stateCount 0) (Just 1)
+  , "count equals allows expansion" ~: assertStateReturns (assignment' >> assignment') ["\\def\\a{=}\\count0\\a1%"] (stateCount 0) (Just 1)
+  , "count value allows expansion" ~: assertStateReturns (assignment' >> assignment') ["\\def\\a{10}\\count0=\\a\\a%"] (stateCount 0) (Just 1010)
   ]
+  where
+    assignment' = assignment expand
 
 parserTests :: Test
 parserTests =

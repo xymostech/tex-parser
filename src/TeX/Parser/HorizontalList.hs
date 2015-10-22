@@ -37,6 +37,6 @@ groupedHorizontalList =
 
 horizontalList :: TeXParser [HorizontalListElem]
 horizontalList = do
-  option [] $ (assignment >> horizontalList) <|>
+  option [] $ (assignment expand >> horizontalList) <|>
               ((:) <$> horizontalListElem <*> horizontalList) <|>
               ((++) <$> groupedHorizontalList <*> horizontalList)
