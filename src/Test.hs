@@ -3,8 +3,8 @@ module Main where
 
 import Data.Either (Either(Left, Right), isLeft)
 import Prelude (Char, Maybe(Just), IO, Eq, Show, String, Bool(True, False)
-               , return, putStrLn, sequence, all, id
-               , ($), (<*), (+), (==), (>>), (<)
+               , return, putStrLn, sequence, all, id, div
+               , ($), (<*), (+), (==), (>>), (<), (*)
                )
 import System.Exit (exitSuccess, exitFailure)
 import Test.HUnit ( Assertion, Test
@@ -230,6 +230,7 @@ utilTests =
   [ "empty strings don't parse to numbers" ~: assertDoesntParse (number noExpand) []
   , "numbers parse to numbers" ~: assertParsesTo (number noExpand) ["213%"] 213
   , "counts are comparable" ~: assertBool "" ((3 :: Count) < (4 :: Count))
+  , "counts do math correctly" ~: assertBool "" (((20 :: Count) `div` (3 :: Count)) + ((2 :: Count) * (3 :: Count)) == (12 :: Count))
   ]
 
 doTest :: String -> Test -> IO Bool
