@@ -33,3 +33,9 @@ instance Num Count where
   signum _ = CountOverflow
 
   fromInteger a = checkOverflowed $ Count a
+
+instance Ord Count where
+  (<=) (Count a) (Count b) = a < b
+  (<=) (Count _) CountOverflow = True
+  (<=) CountOverflow (Count _) = False
+  (<=) CountOverflow CountOverflow = False
