@@ -3,9 +3,9 @@ where
 
 import Prelude ( Maybe(Just, Nothing)
                , show, otherwise
-               , (==), (<*)
+               , (==), (<*), (++)
                )
-import Text.Parsec (tokenPrim, getState, putState)
+import Text.Parsec (tokenPrim, getState, putState, (<?>))
 
 import TeX.Parser.Parser
 import TeX.Token
@@ -25,14 +25,14 @@ tokenWithFunc func =
 
 controlSequence :: TeXParser Token
 controlSequence =
-  tokenWithFunc testControlSequence
+  tokenWithFunc testControlSequence <?> "control sequence"
   where
     testControlSequence esc@(ControlSequence _) = Just esc
     testControlSequence _ = Nothing
 
 exactToken :: Token -> TeXParser Token
 exactToken tok =
-  tokenWithFunc testToken
+  tokenWithFunc testToken <?> ("token " ++ show tok)
   where
     testToken tok'
       | tok == tok' = Just tok
@@ -40,7 +40,7 @@ exactToken tok =
 
 categoryToken :: Category -> TeXParser Token
 categoryToken cat =
-  tokenWithFunc testToken
+  tokenWithFunc testToken <?> ("token of category " ++ show cat)
   where
     testToken tok@(CharToken _ cat')
       | cat == cat' = Just tok

@@ -3,8 +3,8 @@ module Main where
 
 import Data.Either (Either(Left, Right), isLeft)
 import Prelude (Char, Maybe(Just), IO, Eq, Show, String, Bool(True, False)
-               , return, putStrLn, sequence, all, id, div
-               , ($), (<*), (+), (==), (>>), (<), (*)
+               , return, putStrLn, sequence, all, id, div, show
+               , ($), (<*), (+), (==), (>>), (<), (*), (++)
                )
 import System.Exit (exitSuccess, exitFailure)
 import Test.HUnit ( Assertion, Test
@@ -156,7 +156,7 @@ macroTests =
 assertStateReturns :: (Eq b, Show b) => TeXParser a -> [[Char]] -> (Lens' TeXState b) -> b -> Assertion
 assertStateReturns parser lines accessor expected =
   case eitherFinalState of
-    Left _ -> assertFailure "parsing failed"
+    Left err -> assertFailure ("parsing failed: " ++ show err)
     Right finalState -> assertEqual "" expected (finalState ^. accessor)
   where
     eitherFinalState = runParser (parser >> eof >> getState) (Just $ mkState myParserMap) lines
