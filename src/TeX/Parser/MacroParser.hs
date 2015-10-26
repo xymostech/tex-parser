@@ -1,3 +1,4 @@
+{-# LANGUAGE Rank2Types #-}
 module TeX.Parser.MacroParser
 ( parseDef, expandMacro, parseMacroExpansion
 )
@@ -98,9 +99,9 @@ makeReplacementText (t:rest) =
   (:) (RTToken t) <$> makeReplacementText rest
 makeReplacementText [] = return []
 
-parseDef :: TeXParser Def
-parseDef = do
-  _ <- exactToken (ControlSequence "def")
+parseDef :: Expander -> TeXParser Def
+parseDef expand = do
+  _ <- expand $ exactToken (ControlSequence "def")
   control <- controlSequence
   parameterText <- option [] $ try (parseParameterText 1)
   _ <- categoryToken BeginGroup

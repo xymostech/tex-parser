@@ -111,10 +111,9 @@ expandUntil expand stop =
   where
     untilRec :: [Token] -> TeXParser [Token]
     untilRec revList =
-      expand $
-        (((lookAhead stop) >> (return $ reverse revList)) <|>
-         (assignment expand >> untilRec revList) <|>
-         (anyToken >>= (\tok -> untilRec (tok:revList))))
+      ((expand (lookAhead stop) >> (return $ reverse revList)) <|>
+       (assignment expand >> untilRec revList) <|>
+       (expand anyToken >>= (\tok -> untilRec (tok:revList))))
 
 ignoreUntil :: TeXParser Token -> TeXParser ()
 ignoreUntil stop =

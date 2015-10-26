@@ -12,7 +12,7 @@ import Test.HUnit ( Assertion, Test
                   , failures, errors
                   , (~:)
                   )
-import Text.Parsec (ParseError, eof, getState)
+import Text.Parsec (ParseError, eof, getState, anyToken)
 import Control.Lens (Lens', (^.), (.~))
 
 import TeX.Category
@@ -88,23 +88,23 @@ assertDefDoesntExpand def lines =
 macroTests :: Test
 macroTests =
   test
-  [ "parses empty macros" ~: assertParsesTo parseDef ["\\def\\a{}%"] (Def "a" [] [])
-  , "parses basic macros" ~: assertParsesTo parseDef ["\\def\\a{b}%"] (Def "a" [] [RTToken (CharToken 'b' Letter)])
-  , "parses macros with arguments" ~: assertParsesTo parseDef ["\\def\\a#1{}%"] (Def "a" [PTParameter 1] [])
-  , "parses macros with multiple arguments" ~: assertParsesTo parseDef ["\\def\\a#1#2#3{}%"] (Def "a" [PTParameter 1, PTParameter 2, PTParameter 3] [])
-  , "doesn't parse macros with backwards args" ~: assertDoesntParse parseDef ["\\def\\a#2#1{}%"]
-  , "doesn't parse macros with out-of-order args" ~: assertDoesntParse parseDef ["\\def\\a#1#3{}%"]
-  , "doesn't parse macros with duplicate args" ~: assertDoesntParse parseDef ["\\def\\a#1#1{}%"]
-  , "parses macros with args in their bodies" ~: assertParsesTo parseDef ["\\def\\a#1{#1}%"] (Def "a" [PTParameter 1] [RTParameter 1])
-  , "parses macros with multiple args in their bodies" ~: assertParsesTo parseDef ["\\def\\a#1#2{#2#1#1#2}%"] (Def "a" [PTParameter 1, PTParameter 2] [RTParameter 2, RTParameter 1, RTParameter 1, RTParameter 2])
-  , "parses macros with balanced bodies" ~: assertParsesTo parseDef ["\\def\\a{{}{{}}}%"] (Def "a" [] [openBraceRT, closeBraceRT, openBraceRT, openBraceRT, closeBraceRT, closeBraceRT])
-  , "doesn't parse macros with imbalanced bodies" ~: assertDoesntParse parseDef ["\\def\\a{{}{{}}%"]
-  , "parses double pound signs" ~: assertParsesTo parseDef ["\\def\\a{##}%"] (Def "a" [] [RTToken (CharToken '#' Parameter)])
-  , "parses other tokens in the replacement text" ~: assertParsesTo parseDef ["\\def\\a{a#1 \\x##}%"] (Def "a" [] [RTToken (CharToken 'a' Letter), RTParameter 1, RTToken (CharToken ' ' Space), RTToken (ControlSequence "x"), RTToken (CharToken '#' Parameter)])
-  , "parses macros with newlines" ~: assertParsesTo parseDef ["\\def\\a{", "}%"] (Def "a" [] [RTToken (CharToken ' ' Space)])
-  , "parses macros with tokens in the parameters" ~: assertParsesTo parseDef ["\\def\\a 1#12{}%"] (Def "a" [PTToken (CharToken '1' Other), PTParameter 1, PTToken (CharToken '2' Other)] [])
-  , "parses trailing parameter braces" ~: assertParsesTo parseDef ["\\def\\a #1#{}%"] (Def "a" [PTParameter 1, PTTrailingBrace] [])
-  , "doesn't parse parameters in the replacement text" ~: assertDoesntParse parseDef ["\\def\\a{#}%"]
+  [ "parses empty macros" ~: assertParsesTo parseDef' ["\\def\\a{}%"] (Def "a" [] [])
+  , "parses basic macros" ~: assertParsesTo parseDef' ["\\def\\a{b}%"] (Def "a" [] [RTToken (CharToken 'b' Letter)])
+  , "parses macros with arguments" ~: assertParsesTo parseDef' ["\\def\\a#1{}%"] (Def "a" [PTParameter 1] [])
+  , "parses macros with multiple arguments" ~: assertParsesTo parseDef' ["\\def\\a#1#2#3{}%"] (Def "a" [PTParameter 1, PTParameter 2, PTParameter 3] [])
+  , "doesn't parse macros with backwards args" ~: assertDoesntParse parseDef' ["\\def\\a#2#1{}%"]
+  , "doesn't parse macros with out-of-order args" ~: assertDoesntParse parseDef' ["\\def\\a#1#3{}%"]
+  , "doesn't parse macros with duplicate args" ~: assertDoesntParse parseDef' ["\\def\\a#1#1{}%"]
+  , "parses macros with args in their bodies" ~: assertParsesTo parseDef' ["\\def\\a#1{#1}%"] (Def "a" [PTParameter 1] [RTParameter 1])
+  , "parses macros with multiple args in their bodies" ~: assertParsesTo parseDef' ["\\def\\a#1#2{#2#1#1#2}%"] (Def "a" [PTParameter 1, PTParameter 2] [RTParameter 2, RTParameter 1, RTParameter 1, RTParameter 2])
+  , "parses macros with balanced bodies" ~: assertParsesTo parseDef' ["\\def\\a{{}{{}}}%"] (Def "a" [] [openBraceRT, closeBraceRT, openBraceRT, openBraceRT, closeBraceRT, closeBraceRT])
+  , "doesn't parse macros with imbalanced bodies" ~: assertDoesntParse parseDef' ["\\def\\a{{}{{}}%"]
+  , "parses double pound signs" ~: assertParsesTo parseDef' ["\\def\\a{##}%"] (Def "a" [] [RTToken (CharToken '#' Parameter)])
+  , "parses other tokens in the replacement text" ~: assertParsesTo parseDef' ["\\def\\a{a#1 \\x##}%"] (Def "a" [] [RTToken (CharToken 'a' Letter), RTParameter 1, RTToken (CharToken ' ' Space), RTToken (ControlSequence "x"), RTToken (CharToken '#' Parameter)])
+  , "parses macros with newlines" ~: assertParsesTo parseDef' ["\\def\\a{", "}%"] (Def "a" [] [RTToken (CharToken ' ' Space)])
+  , "parses macros with tokens in the parameters" ~: assertParsesTo parseDef' ["\\def\\a 1#12{}%"] (Def "a" [PTToken (CharToken '1' Other), PTParameter 1, PTToken (CharToken '2' Other)] [])
+  , "parses trailing parameter braces" ~: assertParsesTo parseDef' ["\\def\\a #1#{}%"] (Def "a" [PTParameter 1, PTTrailingBrace] [])
+  , "doesn't parse parameters in the replacement text" ~: assertDoesntParse parseDef' ["\\def\\a{#}%"]
   -- \def\a{} \a -> ''
   , "expands empty macros" ~: assertDefExpandsTo (Def "a" [] []) ["\\a%"] []
   -- \def\a{ab} \a -> 'ab'
@@ -145,6 +145,8 @@ macroTests =
   , "expands with empty delimited args" ~: assertDefExpandsTo dotDef ["\\a ..b%"] [CharToken 'b' Letter]
   ]
   where
+    parseDef' = parseDef noExpand
+
     openBraceRT = RTToken (CharToken '{' BeginGroup)
     closeBraceRT = RTToken (CharToken '}' EndGroup)
     identDef = (Def "a" [PTParameter 1] [RTParameter 1])
@@ -185,6 +187,9 @@ parserTests =
   , "parses groups" ~: assertParsesTo horizontalList ["a{b{c}d}e%"] [HBoxChar 'a', HBoxChar 'b', HBoxChar 'c', HBoxChar 'd', HBoxChar 'e']
   , "fails on unterminated groups" ~: assertDoesntParse horizontalList ["a{b%"]
   , "fails on extra closing braces" ~: assertDoesntParse horizontalList ["a{b}}%"]
+
+  , "fails to expand if expanders fail" ~: assertDoesntParse (expand anyToken) ["\\ifnum%"]
+  , "succeeds if expanders don't fail" ~: assertParsesTo (expand anyToken) ["\\a"] (ControlSequence "a")
   ]
 
 conditionalTests :: Test

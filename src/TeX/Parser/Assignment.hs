@@ -15,7 +15,7 @@ import TeX.Parser.Util
 import TeX.State
 import TeX.Token
 
-definition :: TeXParser Def
+definition :: Expander -> TeXParser Def
 definition = parseDef
 
 prefix :: TeXParser Token
@@ -23,7 +23,7 @@ prefix = unimplemented
 
 macroAssignment :: Expander -> TeXParser ()
 macroAssignment expand =
-  (expand definition >>= doSet)
+  (definition expand >>= doSet)
    <|> (prefix >> macroAssignment expand)
   where
     doSet def@(Def name _ _) = modifyState (stateDefinition name .~ Just def)
