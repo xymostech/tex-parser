@@ -168,6 +168,7 @@ stateTests =
   [ "defs are assigned" ~: assertStateReturns assignment' ["\\def\\a {1}%"] (stateDefinition "a") (Just $ Def "a" [] [RTToken (CharToken '1' Other)])
   , "defs allow expansion" ~: assertStateReturns (assignment' >> assignment') ["\\def\\a{\\def\\b{c}}\\a%"] (stateDefinition "b") (Just $ Def "b" [] [RTToken (CharToken 'c' Letter)])
   , "counts are assigned" ~: assertStateReturns assignment' ["\\count0=1%"] (stateCount 0) (Just 1)
+  , "counts assign to other counts" ~: assertStateReturns (assignment' >> assignment') ["\\count0=2\\count1=\\count0%"] (stateCount 1) (Just 2)
   , "counts allow extra whitespace" ~: assertStateReturns assignment' ["\\count0   =   1 %"] (stateCount 0) (Just 1)
   , "counts don't need = signs" ~: assertStateReturns assignment' ["\\count0 1%"] (stateCount 0) (Just 1)
   , "counts allow expansion" ~: assertStateReturns (assignment' >> assignment') ["\\def\\a{\\count0=1}\\a%"] (stateCount 0) (Just 1)
@@ -209,19 +210,17 @@ conditionalTests :: Test
 conditionalTests =
   test
   [ "iftrue heads parse" ~: assertParsesTo (conditionalHead noExpand) ["\\iftrue%"] IfTrue
-  , "ifnum heads parse" ~: assertParsesTo (conditionalHead noExpand) ["\\ifnum 2<3%"] (IfNum (LitCount 2) LessThan (LitCount 3))
+  , "ifnum heads parse" ~: assertParsesTo (conditionalHead noExpand) ["\\ifnum 2<3%"] (IfNum 2 LessThan 3)
 
-  , "number comparisons are parsed correctly" ~: assertParsesTo (conditionalHead noExpand) ["\\ifnum 2<3%"] (IfNum (LitCount 2) LessThan (LitCount 3))
-  , "number comparisons parse counts correctly" ~: assertParsesTo (conditionalHead noExpand) ["\\ifnum \\count0<3%"] (IfNum (IntVar $ LiteralCount 0) LessThan (LitCount 3))
-  , "number comparisons expand" ~: assertParsesTo (assignment expand >> conditionalHead expand) ["\\def\\a{1}\\ifnum\\a=\\a%"] (IfNum (LitCount 1) EqualTo (LitCount 1))
+  , "number comparisons are parsed correctly" ~: assertParsesTo (conditionalHead noExpand) ["\\ifnum 2<3%"] (IfNum 2 LessThan 3)
+  , "number comparisons parse counts correctly" ~: assertParsesTo (conditionalHead noExpand) ["\\ifnum \\count0<3%"] (IfNum 0 LessThan 3)
+  , "number comparisons expand" ~: assertParsesTo (assignment expand >> conditionalHead expand) ["\\def\\a{1}\\ifnum\\a=\\a%"] (IfNum 1 EqualTo 1)
 
   , "iftrue heads evaluate true" ~: assertParsesTo (evaluateHead IfTrue) [] True
   , "iffalse heads evaluate true" ~: assertParsesTo (evaluateHead IfFalse) [] False
-  , "< heads evaluate correctly" ~: assertParsesTo (evaluateHead (IfNum (LitCount 3) LessThan (LitCount 2))) [] False
-  , "> heads evaluate correctly" ~: assertParsesTo (evaluateHead (IfNum (LitCount 3) GreaterThan (LitCount 2))) [] True
-  , "= heads evaluate correctly" ~: assertParsesTo (evaluateHead (IfNum (LitCount 5) EqualTo (LitCount 5))) [] True
-
-  , "comparison heads expand \\counts" ~: assertParsesTo (assignment expand >> evaluateHead (IfNum (IntVar (LiteralCount 0)) EqualTo (LitCount 4))) ["\\count0=4%"] True
+  , "< heads evaluate correctly" ~: assertParsesTo (evaluateHead (IfNum 3 LessThan 2)) [] False
+  , "> heads evaluate correctly" ~: assertParsesTo (evaluateHead (IfNum 3 GreaterThan 2)) [] True
+  , "= heads evaluate correctly" ~: assertParsesTo (evaluateHead (IfNum 5 EqualTo 5)) [] True
 
   , "finds true body" ~: assertParsesTo (runConditionalBody noExpand True) ["a\\fi%"] [CharToken 'a' Letter]
   , "finds true body with else body" ~: assertParsesTo (runConditionalBody noExpand True) ["a\\else b\\fi%"] [CharToken 'a' Letter]

@@ -56,8 +56,14 @@ optionalSigns expand =
   (optionalSpaces expand >> return 1) <?>
   "optional sign"
 
-internalInteger :: TeXParser Integer
-internalInteger = unimplemented
+internalInteger :: Expander -> TeXParser Integer
+internalInteger expand =
+  variableValue
+  where
+    variableValue = do
+      var <- integerVariable expand
+      value <- integerVariableValue var
+      return $ toInteger value
 
 integerConstant :: Expander -> TeXParser Integer
 integerConstant expand = do
@@ -87,7 +93,7 @@ characterToken = unimplemented
 
 normalInteger :: Expander -> TeXParser Integer
 normalInteger expand =
-  internalInteger <|>
+  internalInteger expand <|>
   (integerConstant expand <* optionalSpace expand) <|>
   (expand (exactToken (CharToken '\'' Other)) >> octalConstant <* optionalSpace expand) <|>
   (expand (exactToken (CharToken '"' Other)) >> hexadecimalConstant <* optionalSpace expand) <|>
@@ -138,6 +144,14 @@ integerVariable expand =
       LiteralCount <$> (expand (exactToken (ControlSequence "count")) >>
                                eightBitNumber expand)
 
+integerVariableValue :: IntegerVariable -> TeXParser Count
+integerVariableValue (IntegerParameter _) = unimplemented
+integerVariableValue (CountDefToken _) = unimplemented
+integerVariableValue (LiteralCount counter) = do
+  val <- (^.) <$> getState <*> (return (stateCount (fromInteger counter)))
+  case val of
+    Just a -> return a
+    Nothing -> fail $ "invalid counter: " ++ (show counter)
 
 aliasFor :: Alias -> TeXParser Token
 aliasFor alias = do

@@ -5,49 +5,25 @@ module TeX.Parser.Conditional
 
 -- for tests:
 , conditionalHead, evaluateHead, runConditionalBody
-, NumberValue(LitCount, IntVar)
 , ConditionalHead(IfTrue, IfFalse, IfNum)
 , Relation(LessThan, GreaterThan, EqualTo)
 )
 where
 
-import Prelude ( Maybe(Just, Nothing), Integer, Show, Eq, Bool(True, False)
-               , return, fail, fromInteger, show, reverse
-               , (>>), (+), (-), ($), (++), (<), (==), (>), (>>=)
+import Prelude ( Integer, Show, Eq, Bool(True, False)
+               , return, fail, reverse
+               , (>>), (+), (-), ($), (<), (==), (>), (>>=)
                )
-import Control.Applicative ((<$>), (<*))
-import Text.Parsec ((<|>), (<?>), getState, anyToken, lookAhead)
-import Control.Lens ((^.))
+import Control.Applicative ((<*))
+import Text.Parsec ((<|>), (<?>), anyToken, lookAhead)
 
 import TeX.Alias
 import TeX.Parser.Assignment
 import TeX.Parser.Parser
 import TeX.Parser.Prim
 import TeX.Parser.Util
-import TeX.Count
 import TeX.Token
-import TeX.State
 import TeX.Category
-
-data NumberValue = LitCount Count | IntVar IntegerVariable
-  deriving (Show, Eq)
-
-numberValue :: Expander -> TeXParser NumberValue
-numberValue expand =
-  (LitCount <$> count expand) <|>
-  (IntVar <$> integerVariable expand) <?> "number value"
-
-valueOfNumberValue :: NumberValue -> TeXParser Count
-valueOfNumberValue (LitCount val) = return val
-valueOfNumberValue (IntVar var) = do
-  state <- getState
-  case var of
-    IntegerParameter _ -> unimplemented
-    CountDefToken _ -> unimplemented
-    LiteralCount counter ->
-      case state ^. (stateCount $ fromInteger counter) of
-        Nothing -> fail $ "invalid counter: " ++ (show counter)
-        Just value -> return value
 
 data Relation = LessThan | EqualTo | GreaterThan
   deriving (Show, Eq)
@@ -60,7 +36,7 @@ relation expand =
   "relation"
 
 data ConditionalHead =
-    IfNum NumberValue Relation NumberValue
+    IfNum Integer Relation Integer
   | IfTrue
   | IfFalse
   deriving (Show, Eq)
@@ -74,22 +50,20 @@ conditionalHead expand =
 
     ifnum = do
       _ <- exactToken (ControlSequence "ifnum")
-      left <- numberValue expand
+      left <- number expand
       rel <- relation expand
-      right <- numberValue expand
+      right <- number expand
       return $ IfNum left rel right
 
     iffalse =
       (exactToken (ControlSequence "iffalse") <|> aliasFor AliasIfFalse) >> (return IfFalse)
 
 evaluateHead :: ConditionalHead -> TeXParser Bool
-evaluateHead (IfNum left rel right) = do
-  leftVal <- valueOfNumberValue left
-  rightVal <- valueOfNumberValue right
+evaluateHead (IfNum left rel right) =
   case rel of
-    LessThan -> return $ leftVal < rightVal
-    EqualTo -> return $ leftVal == rightVal
-    GreaterThan -> return $ leftVal > rightVal
+    LessThan -> return $ left < right
+    EqualTo -> return $ left == right
+    GreaterThan -> return $ left > right
 evaluateHead IfTrue = return True
 evaluateHead IfFalse = return False
 
