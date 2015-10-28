@@ -1,10 +1,11 @@
 module TeX.Parser.HorizontalList
 ( HorizontalListElem(HBoxChar, HPenalty)
-, horizontalList
+, horizontalList, horizontalListChars
 )
 where
 
 import Prelude ( Char, Int, Show, Eq
+               , map, undefined, return
                , (<$>), (>>), (<*>), ($), (<*), (*>), (++)
                )
 import Text.Parsec
@@ -40,3 +41,12 @@ horizontalList = do
   option [] $ (assignment expand >> horizontalList) <|>
               ((:) <$> horizontalListElem <*> horizontalList) <|>
               ((++) <$> groupedHorizontalList <*> horizontalList)
+
+-- A testing parser that spits out the characters we get as output.
+horizontalListChars :: TeXParser [Char]
+horizontalListChars = do
+  list <- horizontalList
+  return $ map toChar list
+  where
+    toChar (HBoxChar c) = c
+    toChar _ = undefined

@@ -8,6 +8,7 @@ import Text.Parsec hiding (runParser)
 import Control.Lens
 import Control.Monad.State as S
 import Control.Applicative
+import System.Exit (die)
 
 import TeX.Category
 import TeX.Count
@@ -36,5 +37,11 @@ tryParser parser str =
   TeX.Parser.Parser.runParser parser (Just $ mkState defaultMap) [str]
 
 main :: IO ()
-main =
-  return ()
+main = do
+  input <- getContents
+  let inputLines = splitInput input
+  case runParser (horizontalListChars <* eof) (Just $ mkState defaultMap) inputLines of
+    Left err ->
+      die $ show err
+    Right output ->
+      putStrLn output

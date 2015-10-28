@@ -5,7 +5,7 @@
 module TeX.Parser.Parser where
 
 import Prelude ( Maybe(Just, Nothing), Show, Char, Either()
-               , return, id
+               , return, id, reverse
                , ($), (++)
                )
 import Control.Monad.Identity (Identity, runIdentity)
@@ -68,6 +68,19 @@ runParser parser maybeState lines =
               Nothing -> mkState initialMap
 
 type Expander = forall a. TeXParser a -> TeXParser a
+
+splitInput :: [Char] -> [[Char]]
+splitInput input =
+  splitInputRec input [] []
+  where
+    splitInputRec :: [Char] -> [Char] -> [[Char]] -> [[Char]]
+    splitInputRec [] [] revLines = reverse revLines
+    splitInputRec [] revCurrLine revLines =
+      splitInputRec [] [] ((reverse revCurrLine):revLines)
+    splitInputRec ('\n':rest) revCurrLine revLines =
+      splitInputRec rest [] ((reverse revCurrLine):revLines)
+    splitInputRec (c:rest) revCurrLine revLines =
+      splitInputRec rest (c:revCurrLine) revLines
 
 noExpand :: Expander
 noExpand = id
