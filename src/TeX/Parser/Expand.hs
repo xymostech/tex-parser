@@ -9,13 +9,14 @@ import Text.Parsec
 
 import TeX.Parser.Conditional
 import TeX.Parser.MacroParser
+import TeX.Parser.NumberExpander
 import TeX.Parser.Parser
 import TeX.Token
 
 type TokenExpander = Expander -> TeXParser [Token]
 
 expanders :: [TokenExpander]
-expanders = [expandMacro, expandConditional]
+expanders = [expandMacro, expandConditional, expandNumbers]
 
 runExpanders :: [TokenExpander] -> TeXParser [Token]
 runExpanders [] = fail "all expanders failed"

@@ -1,5 +1,6 @@
 module TeX.Count
 ( Count(CountOverflow)
+, printCount
 )
 where
 
@@ -73,3 +74,7 @@ instance Ord Count where
   (<=) (Count _) CountOverflow = True
   (<=) CountOverflow (Count _) = False
   (<=) CountOverflow CountOverflow = False
+
+printCount :: Count -> String
+printCount (Count a) = show a
+printCount CountOverflow = undefined

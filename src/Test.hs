@@ -12,7 +12,7 @@ import Test.HUnit ( Assertion, Test
                   , failures, errors
                   , (~:)
                   )
-import Text.Parsec (ParseError, eof, getState, anyToken)
+import Text.Parsec (ParseError, eof, getState, anyToken, many)
 import Control.Lens (Lens', (^.), (.~))
 
 import TeX.Alias
@@ -204,6 +204,8 @@ parserTests =
   , "aliases parse" ~: assertParsesTo (assignment noExpand >> aliasFor AliasIfTrue) ["\\let\\a=\\iftrue\\a%"] (ControlSequence "a")
   , "iftrue aliases work" ~: assertParsesTo (assignment noExpand >> expand anyToken) ["\\let\\a=\\iftrue\\a a\\else b\\fi%"] (CharToken 'a' Letter)
   , "iftrue aliases are skipped correctly" ~: assertParsesTo (assignment noExpand >> expand anyToken) ["\\let\\a=\\iftrue\\iftrue a\\else \\a\\fi\\fi%"] (CharToken 'a' Letter)
+
+  , "\\number expands" ~: assertParsesTo (expand $ many anyToken) ["\\number-123%"] [CharToken '-' Other, CharToken '1' Other, CharToken '2' Other, CharToken '3' Other]
   ]
 
 conditionalTests :: Test
