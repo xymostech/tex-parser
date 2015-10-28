@@ -19,6 +19,7 @@ import Control.Applicative ((<$>), (<*))
 import Text.Parsec ((<|>), (<?>), getState, anyToken, lookAhead)
 import Control.Lens ((^.))
 
+import TeX.Alias
 import TeX.Parser.Assignment
 import TeX.Parser.Parser
 import TeX.Parser.Prim
@@ -68,7 +69,8 @@ conditionalHead :: Expander -> TeXParser ConditionalHead
 conditionalHead expand =
   ifnum <|> iftrue <|> iffalse
   where
-    iftrue = exactToken (ControlSequence "iftrue") >> (return IfTrue)
+    iftrue =
+      (exactToken (ControlSequence "iftrue") <|> aliasFor AliasIfTrue) >> (return IfTrue)
 
     ifnum = do
       _ <- exactToken (ControlSequence "ifnum")
@@ -77,7 +79,8 @@ conditionalHead expand =
       right <- numberValue expand
       return $ IfNum left rel right
 
-    iffalse = exactToken (ControlSequence "iffalse") >> (return IfFalse)
+    iffalse =
+      (exactToken (ControlSequence "iffalse") <|> aliasFor AliasIfFalse) >> (return IfFalse)
 
 evaluateHead :: ConditionalHead -> TeXParser Bool
 evaluateHead (IfNum left rel right) = do
@@ -93,7 +96,9 @@ evaluateHead IfFalse = return False
 ifToken :: TeXParser Token
 ifToken =
   (exactToken (ControlSequence "iftrue")) <|>
+  (aliasFor AliasIfTrue) <|>
   (exactToken (ControlSequence "iffalse")) <|>
+  (aliasFor AliasIfFalse) <|>
   (exactToken (ControlSequence "ifnum")) <?>
   "if token"
 

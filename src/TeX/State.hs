@@ -2,8 +2,8 @@
            , Rank2Types #-}
 module TeX.State
 ( TeXState(), mkState
-, stateCategory, stateDefinition, stateCount
-, globalStateCategory, globalStateDefinition, globalStateCount
+, stateCategory, stateDefinition, stateCount, stateAlias
+, globalStateCategory, globalStateDefinition, globalStateCount, globalStateAlias
 , pushState, popState
 )
 where
@@ -13,15 +13,18 @@ import Control.Lens ( Lens', Setter'
                     , (^.), (.~)
                     )
 
+import TeX.Alias
 import TeX.Category
+import TeX.Count
 import TeX.Def
 import TeX.Register
-import TeX.Count
+import TeX.Token
 
 data LocalTeXState = LocalTeXState
   { _categoryMap :: CategoryMap
   , _definitionMap :: DefinitionMap
   , _countMap :: RegisterMap Count
+  , _aliasMap :: AliasMap
   }
   deriving (Show)
 makeLenses ''LocalTeXState
@@ -43,6 +46,7 @@ mkState catMap =
                  { _categoryMap = catMap
                  , _definitionMap = emptyDefMap
                  , _countMap = emptyRegMap 0
+                 , _aliasMap = emptyAliasMap
                  }
   , depthList = []
   }
@@ -128,6 +132,12 @@ stateCount index = stateAccessor (register index) countMap
 
 globalStateCount :: Int -> Setter' TeXState (Maybe Count)
 globalStateCount index = globalSetter (register index) countMap
+
+stateAlias :: Token -> Lens' TeXState (Maybe Alias)
+stateAlias tok = stateAccessor (aliasLens tok) aliasMap
+
+globalStateAlias :: Token -> Setter' TeXState (Maybe Alias)
+globalStateAlias tok = globalSetter (aliasLens tok) aliasMap
 
 pushState :: TeXState -> TeXState
 pushState state =

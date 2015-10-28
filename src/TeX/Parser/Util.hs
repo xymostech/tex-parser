@@ -6,15 +6,21 @@ module TeX.Parser.Util
 , equals
 , number, eightBitNumber, count
 , integerVariable, IntegerVariable(IntegerParameter, CountDefToken, LiteralCount)
+, aliasFor
 )
 where
 
-import Text.Parsec ((<|>), (<?>), choice)
+import Control.Lens ((^.))
+import Text.Parsec ( (<|>), (<?>)
+                   , choice, anyToken, getState, lookAhead
+                   )
 
+import TeX.Alias
 import TeX.Category
 import TeX.Count
 import TeX.Parser.Parser
 import TeX.Parser.Prim
+import TeX.State
 import TeX.Token
 
 unimplemented :: TeXParser a
@@ -131,3 +137,12 @@ integerVariable expand =
     literalCount =
       LiteralCount <$> (expand (exactToken (ControlSequence "count")) >>
                                eightBitNumber expand)
+
+
+aliasFor :: Alias -> TeXParser Token
+aliasFor alias = do
+  tok <- lookAhead anyToken
+  maybeAlias <- (^.) <$> getState <*> (return $ stateAlias tok)
+  if maybeAlias == Just alias
+  then anyToken
+  else fail (show tok ++ " is not an alias for " ++ show alias)

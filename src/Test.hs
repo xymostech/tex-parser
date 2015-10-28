@@ -15,6 +15,7 @@ import Test.HUnit ( Assertion, Test
 import Text.Parsec (ParseError, eof, getState, anyToken)
 import Control.Lens (Lens', (^.), (.~))
 
+import TeX.Alias
 import TeX.Category
 import TeX.Count
 import TeX.Def hiding (definition)
@@ -196,6 +197,12 @@ parserTests =
   , "fails to expand if expanders fail" ~: assertDoesntParse (expand anyToken) ["\\ifnum%"]
   , "succeeds if expanders don't fail" ~: assertParsesTo (expand anyToken) ["\\a"] (ControlSequence "a")
   , "expands recursively" ~: assertParsesTo (assignment noExpand >> assignment noExpand >> expand anyToken) ["\\def\\a{a}\\def\\b{\\a}\\b%"] (CharToken 'a' Letter)
+
+  , "let assigns macros" ~: assertStateReturns (assignment noExpand >> assignment noExpand) ["\\def\\a{}\\let\\b=\\a%"] (stateDefinition "b") (Just $ Def "b" [] [])
+  , "let assigns aliases" ~: assertStateReturns (assignment noExpand) ["\\let\\a=\\iftrue%"] (stateAlias (ControlSequence "a")) (Just AliasIfTrue)
+  , "aliases parse" ~: assertParsesTo (assignment noExpand >> aliasFor AliasIfTrue) ["\\let\\a=\\iftrue\\a%"] (ControlSequence "a")
+  , "iftrue aliases work" ~: assertParsesTo (assignment noExpand >> expand anyToken) ["\\let\\a=\\iftrue\\a a\\else b\\fi%"] (CharToken 'a' Letter)
+  , "iftrue aliases are skipped correctly" ~: assertParsesTo (assignment noExpand >> expand anyToken) ["\\let\\a=\\iftrue\\iftrue a\\else \\a\\fi\\fi%"] (CharToken 'a' Letter)
   ]
 
 conditionalTests :: Test

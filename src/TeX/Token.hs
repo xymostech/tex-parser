@@ -12,6 +12,12 @@ data Token = CharToken Char Category
            | ControlSequence [Char]
   deriving (Show, Eq)
 
+instance Ord Token where
+  (<=) (CharToken c cat) (CharToken c' cat') = (c, cat) <= (c', cat')
+  (<=) (ControlSequence cs) (ControlSequence cs') = cs <= cs'
+  (<=) (CharToken _ _) (ControlSequence _) = True
+  (<=) (ControlSequence _) (CharToken _ _) = False
+
 extractChar :: Token -> Char
 extractChar (CharToken c _) = c
 extractChar _ = error "Can't extract character from control sequence"

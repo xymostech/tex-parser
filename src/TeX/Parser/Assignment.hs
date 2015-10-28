@@ -2,9 +2,10 @@
 module TeX.Parser.Assignment
 where
 
-import Text.Parsec ((<|>), (<?>), modifyState, getState)
+import Text.Parsec ((<|>), (<?>), modifyState, getState, anyToken)
 import Control.Lens ((.~), (^.))
 
+import TeX.Alias
 import TeX.Category
 import TeX.Count
 import TeX.Def hiding (definition)
@@ -85,9 +86,44 @@ variableAssignment :: Expander -> Bool -> TeXParser ()
 variableAssignment expand global =
   integerVariableAssignment expand global
 
+letAssignment :: Expander -> Bool -> TeXParser ()
+letAssignment expand global = do
+  _ <- expand $ exactToken (ControlSequence "let")
+  cs <- controlSequence
+  equals expand
+  optionalSpace expand
+  token <- anyToken
+  case token of
+    ControlSequence "iftrue" -> letAlias cs AliasIfTrue
+    ControlSequence "iffalse" -> letAlias cs AliasIfFalse
+    ControlSequence setTo -> letMacro (extractControlSequence cs) setTo
+    _ -> unimplemented
+  where
+    myDefSetter name
+      | global = globalStateDefinition name
+      | otherwise = stateDefinition name
+
+    letMacro :: String -> String -> TeXParser ()
+    letMacro cs setTo = do
+      maybeDef <- (^.) <$> getState <*> (return $ stateDefinition setTo)
+      case maybeDef of
+        Just (Def _ pts rts) ->
+          modifyState (myDefSetter cs .~ Just (Def cs pts rts))
+        Nothing -> unimplemented
+
+    myAliasSetter name
+      | global = globalStateAlias name
+      | otherwise = stateAlias name
+
+    letAlias :: Token -> Alias -> TeXParser ()
+    letAlias tok setAlias =
+      modifyState (myAliasSetter tok .~ Just setAlias)
+
 simpleAssignment :: Expander -> Bool -> TeXParser ()
 simpleAssignment expand global =
-  variableAssignment expand global <|> arithmetic expand global
+  variableAssignment expand global <|>
+  arithmetic expand global <|>
+  letAssignment expand global
 
 nonMacroAssignment :: Expander -> Bool -> TeXParser ()
 nonMacroAssignment expand global =

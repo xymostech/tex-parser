@@ -15,7 +15,7 @@ module TeX.Category
 )
 where
 
-import Prelude ( Show, Enum, Eq, Functor
+import Prelude ( Show, Enum, Eq, Functor, Ord
                , Int, Char
                , toEnum, fromEnum
                , Maybe()
@@ -40,7 +40,7 @@ data Category = Escape
               | Active
               | Comment
               | Invalid
-  deriving (Show, Enum, Eq)
+  deriving (Show, Enum, Eq, Ord)
 
 fromCategory :: Category -> Int
 fromCategory = fromEnum
