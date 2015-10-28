@@ -240,6 +240,7 @@ conditionalTests =
   , "bad defs fail inside ifs" ~: assertDoesntParse (runConditionalBody expand True) ["\\def\\a\\fi%"]
   , "defs expand in ifs" ~: assertStateReturns (runConditionalBody expand True) ["\\def\\a{b}\\fi%"] (stateDefinition "a") (Just $ Def "a" [] [RTToken (CharToken 'b' Letter)])
   , "setters expand in ifs" ~: assertStateReturns (runConditionalBody expand True) ["\\count0=1\\fi%"] (stateCount 0) (Just 1)
+  , "local state is maintained in ifs" ~: assertStateReturns (runConditionalBody expand True) ["\\count0=1{\\count0=2}\\fi%"] (stateCount 0) (Just 1)
 
   , "conditionals expand" ~: assertParsesTo (expandConditional expand) ["\\iftrue a\\fi%"] [CharToken 'a' Letter]
   , "conditional else expands" ~: assertParsesTo (expandConditional expand) ["\\iffalse a\\else b\\fi%"] [CharToken 'b' Letter]

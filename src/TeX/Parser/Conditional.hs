@@ -92,6 +92,8 @@ expandUntil expand stop =
     untilRec revList =
       ((expand (lookAhead stop) >> (return $ reverse revList)) <|>
        (assignment expand >> untilRec revList) <|>
+       (expand (categoryToken BeginGroup) >> beginGroup >> untilRec revList) <|>
+       (expand (categoryToken EndGroup) >> endGroup >> untilRec revList) <|>
        (expand anyToken >>= (\tok -> untilRec (tok:revList))))
 
 ignoreUntil :: TeXParser Token -> TeXParser ()
