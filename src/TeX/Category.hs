@@ -10,7 +10,7 @@ module TeX.Category
           )
 , fromCategory, toCategory
 , CategoryMap()
-, empty, category
+, emptyCatMap, category
 , initialMap
 )
 where
@@ -56,8 +56,8 @@ category :: Functor f => Char -> (Maybe Category -> f (Maybe Category)) ->
             CategoryMap -> f CategoryMap
 category = makeMapLens (\(CategoryMap x) -> x) CategoryMap
 
-empty :: CategoryMap
-empty = CategoryMap M.empty
+emptyCatMap :: CategoryMap
+emptyCatMap = CategoryMap M.empty
 
 initialMap :: CategoryMap
 initialMap =

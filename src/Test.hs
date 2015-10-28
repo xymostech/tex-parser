@@ -173,6 +173,11 @@ stateTests =
   , "count counters allow expansion" ~: assertStateReturns (assignment' >> assignment') ["\\def\\a{0}\\count\\a\\a\\a=1%"] (stateCount 0) (Just 1)
   , "count equals allows expansion" ~: assertStateReturns (assignment' >> assignment') ["\\def\\a{=}\\count0\\a1%"] (stateCount 0) (Just 1)
   , "count value allows expansion" ~: assertStateReturns (assignment' >> assignment') ["\\def\\a{10}\\count0=\\a\\a%"] (stateCount 0) (Just 1010)
+
+  , "state stays local" ~: assertStateReturns (assignment' >> beginGroup >> assignment' >> endGroup) ["\\count0=1 \\count0=2%"] (stateCount 0) (Just 1)
+  , "\\global makes state global" ~: assertStateReturns (assignment' >> beginGroup >> assignment' >> endGroup) ["\\count0=1 \\global\\count0=2%"] (stateCount 0) (Just 2)
+  , "\\global changes state in intermediate levels" ~: assertStateReturns (assignment' >> beginGroup >> assignment' >> beginGroup >> assignment' >> endGroup) ["\\count0=1 \\count0=2 \\global\\count0=3%"] (stateCount 0) (Just 3)
+  , "arithmetic does global" ~: assertStateReturns (assignment' >> beginGroup >> assignment' >> endGroup) ["\\count0=1 \\global\\advance\\count0 by1"] (stateCount 0) (Just 2)
   ]
   where
     assignment' = assignment expand

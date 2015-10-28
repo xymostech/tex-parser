@@ -12,6 +12,7 @@ import Control.Monad.Identity (Identity, runIdentity)
 import Text.Parsec ( ParsecT, Stream(uncons), ParseError
                    , runParserT
                    , getInput, setInput
+                   , getState, setState
                    )
 import Debug.Trace
 
@@ -70,3 +71,13 @@ type Expander = forall a. TeXParser a -> TeXParser a
 
 noExpand :: Expander
 noExpand = id
+
+beginGroup :: TeXParser ()
+beginGroup = do
+  state <- getState
+  setState $ pushState state
+
+endGroup :: TeXParser ()
+endGroup = do
+  state <- getState
+  setState $ popState state

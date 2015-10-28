@@ -28,21 +28,23 @@ macroAssignment expand =
   where
     doSet def@(Def name _ _) = modifyState (stateDefinition name .~ Just def)
 
-setIntegerVariable :: IntegerVariable -> Maybe Count -> TeXParser ()
-setIntegerVariable (IntegerParameter _) _ = unimplemented
-setIntegerVariable (CountDefToken _) _ = unimplemented
-setIntegerVariable (LiteralCount counter) value =
+setIntegerVariable :: Bool -> IntegerVariable -> Maybe Count -> TeXParser ()
+setIntegerVariable _ (IntegerParameter _) _ = unimplemented
+setIntegerVariable _ (CountDefToken _) _ = unimplemented
+setIntegerVariable True (LiteralCount counter) value =
+  modifyState (globalStateCount (fromInteger counter) .~ value)
+setIntegerVariable False (LiteralCount counter) value =
   modifyState (stateCount (fromInteger counter) .~ value)
 
-modifyIntegerVariable :: IntegerVariable -> (Count -> Count) -> TeXParser ()
-modifyIntegerVariable (IntegerParameter _) _  = unimplemented
-modifyIntegerVariable (CountDefToken _) _ = unimplemented
-modifyIntegerVariable var@(LiteralCount counter) modify = do
+modifyIntegerVariable :: Bool -> IntegerVariable -> (Count -> Count) -> TeXParser ()
+modifyIntegerVariable _ (IntegerParameter _) _  = unimplemented
+modifyIntegerVariable _ (CountDefToken _) _ = unimplemented
+modifyIntegerVariable global var@(LiteralCount counter) modify = do
   currValue <- (^.) <$> getState <*> (return (stateCount (fromInteger counter)))
-  setIntegerVariable var (currValue >>= (return . modify))
+  setIntegerVariable global var (currValue >>= (return . modify))
 
-arithmetic :: Expander -> TeXParser ()
-arithmetic expand =
+arithmetic :: Expander -> Bool -> TeXParser ()
+arithmetic expand global =
   advance <|> multiply <|> divide
   where
     optionalBy =
@@ -56,40 +58,40 @@ arithmetic expand =
       variable <- integerVariable expand
       optionalBy
       value <- count expand
-      modifyIntegerVariable variable (\x -> x + value)
+      modifyIntegerVariable global variable (\x -> x + value)
 
     multiply = do
       _ <- expand (exactToken (ControlSequence "multiply"))
       variable <- integerVariable expand
       optionalBy
       value <- count expand
-      modifyIntegerVariable variable (\x -> x * value)
+      modifyIntegerVariable global variable (\x -> x * value)
 
     divide = do
       _ <- expand (exactToken (ControlSequence "divide"))
       variable <- integerVariable expand
       optionalBy
       value <- count expand
-      modifyIntegerVariable variable (\x -> x `div` value)
+      modifyIntegerVariable global variable (\x -> x `div` value)
 
-integerVariableAssignment :: Expander -> TeXParser ()
-integerVariableAssignment expand = do
+integerVariableAssignment :: Expander -> Bool -> TeXParser ()
+integerVariableAssignment expand global = do
   variable <- integerVariable expand
   equals expand
   value <- count expand
-  setIntegerVariable variable (Just value)
+  setIntegerVariable global variable (Just value)
 
-variableAssignment :: Expander -> TeXParser ()
-variableAssignment expand =
-  integerVariableAssignment expand
+variableAssignment :: Expander -> Bool -> TeXParser ()
+variableAssignment expand global =
+  integerVariableAssignment expand global
 
-simpleAssignment :: Expander -> TeXParser ()
-simpleAssignment expand =
-  variableAssignment expand <|> arithmetic expand
+simpleAssignment :: Expander -> Bool -> TeXParser ()
+simpleAssignment expand global =
+  variableAssignment expand global <|> arithmetic expand global
 
-nonMacroAssignment :: Expander -> TeXParser ()
-nonMacroAssignment expand =
-  simpleAssignment expand <|> (expand (exactToken (ControlSequence "global")) >> nonMacroAssignment expand)
+nonMacroAssignment :: Expander -> Bool -> TeXParser ()
+nonMacroAssignment expand global =
+  simpleAssignment expand global <|> (expand (exactToken (ControlSequence "global")) >> nonMacroAssignment expand True)
 
 assignment :: Expander -> TeXParser ()
-assignment expand = nonMacroAssignment expand <|> macroAssignment expand
+assignment expand = nonMacroAssignment expand False <|> macroAssignment expand
