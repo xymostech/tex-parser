@@ -18,12 +18,12 @@ expanders :: [TokenExpander]
 expanders = [expandMacro, expandConditional]
 
 runExpanders :: [TokenExpander] -> TeXParser [Token]
-runExpanders [] = return []
+runExpanders [] = fail "all expanders failed"
 runExpanders (expander:rest) =
   expander expand <|> runExpanders rest
 
 doExpand :: TeXParser ()
-doExpand = (runExpanders expanders) >>= prependTokens
+doExpand = (runExpanders expanders >>= prependTokens >> doExpand) <|> return ()
 
 expand :: Expander
 expand parser =

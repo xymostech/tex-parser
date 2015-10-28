@@ -195,6 +195,7 @@ parserTests =
 
   , "fails to expand if expanders fail" ~: assertDoesntParse (expand anyToken) ["\\ifnum%"]
   , "succeeds if expanders don't fail" ~: assertParsesTo (expand anyToken) ["\\a"] (ControlSequence "a")
+  , "expands recursively" ~: assertParsesTo (assignment noExpand >> assignment noExpand >> expand anyToken) ["\\def\\a{a}\\def\\b{\\a}\\b%"] (CharToken 'a' Letter)
   ]
 
 conditionalTests :: Test
