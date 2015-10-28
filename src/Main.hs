@@ -40,7 +40,7 @@ main :: IO ()
 main = do
   input <- getContents
   let inputLines = splitInput input
-  case runParser (horizontalListChars <* eof) (Just $ mkState defaultMap) inputLines of
+  case runParser (horizontalListChars <* expand eof) (Just $ mkState defaultMap) inputLines of
     Left err ->
       die $ show err
     Right output ->
