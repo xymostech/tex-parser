@@ -182,4 +182,4 @@ expandMacro _ = do
   maybeDef <- (^.) <$> getState <*> (return $ stateDefinition name)
   case maybeDef of
     Just def -> parseMacroExpansion def
-    Nothing -> fail $ "unknown macro " ++ name
+    Nothing -> fail $ "unknown macro \\" ++ name
