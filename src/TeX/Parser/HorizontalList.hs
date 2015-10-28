@@ -32,9 +32,9 @@ horizontalListElem =
 
 groupedHorizontalList :: TeXParser [HorizontalListElem]
 groupedHorizontalList =
-  (expand $ categoryToken BeginGroup) *>
+  (expand $ categoryToken BeginGroup >> beginGroup) *>
    horizontalList <*
-   (expand $ categoryToken EndGroup)
+   (expand $ categoryToken EndGroup >> endGroup)
 
 horizontalList :: TeXParser [HorizontalListElem]
 horizontalList = do
