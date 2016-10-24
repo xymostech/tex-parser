@@ -13,8 +13,10 @@ import System.Exit (die)
 import TeX.Category
 import TeX.Count
 import TeX.Def
-import TeX.Parser.Expand
+import TeX.Iterator
 import TeX.Lexer
+{--
+import TeX.Parser.Expand
 import TeX.Parser.Assignment
 import TeX.Parser.HorizontalList
 import TeX.Parser.MacroParser
@@ -45,3 +47,6 @@ main = do
       die $ show err
     Right output ->
       putStrLn output
+--}
+
+main = return ()
